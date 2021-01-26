@@ -6,7 +6,7 @@ Draw.loadPlugin(function(ui) {
 	var div = document.createElement('div');
 	div.style.background = (uiTheme == 'dark') ? '#2a2a2a' : '#ffffff';
 	div.style.border = '1px solid gray';
-	div.style.opacity = '0.8';
+	div.style.opacity = '0.0';
 	div.style.position = 'absolute';
 	div.style.padding = '10px';
 	div.style.paddingTop = '0px';
@@ -16,6 +16,8 @@ Draw.loadPlugin(function(ui) {
 	div.style.right = '20px';
 	
 	var graph = ui.editor.graph;
+
+    var study = (urlParams['study'] == "1")
 	
 	// Made for chromeless mode
 	if (!ui.editor.isChromelessView())
@@ -24,11 +26,35 @@ Draw.loadPlugin(function(ui) {
 		div.style.right = '260px';
 	}
 	
-	div.innerHTML = '<p><i>Select a shape.</i></p>';
 	document.body.appendChild(div);
+
 	
+	var parent = graph.getDefaultParent();
+	var cells = graph.getChildCells(parent);
+
+		
+	for (var i=0; i<cells.length; i++)
+    {
+    	var cell = cells[i];
+    	var attrs = (cell.value != null) ? cell.value.attributes : null;
+    	
+		if (attrs != null)
+		{
+			for (var j = 0; j < attrs.length; j++) {
+				
+				if (attrs[j].nodeName == "reasoning")
+				{
+					var highlight = new mxCellHighlight(graph, '#ebe834', 8);
+					highlight.highlight(graph.view.getState(cell));
+				}
+			}
+		}					
+	}
+
 	// Highlights current cell
 	var highlight = new mxCellHighlight(graph, '#00ff00', 8);
+
+    
 
 	/**
 	 * Updates the properties panel
@@ -38,52 +64,32 @@ Draw.loadPlugin(function(ui) {
 		// Forces focusout in IE
 		graph.container.focus();
 
+		div.style.opacity = '0.0';
+
 		// Gets the selection cell
 		if (cell == null)
 		{
 			highlight.highlight(null);
-			div.innerHTML = '<p><i>Select a shape.</i></p>';
+			div.style.opacity = '0.0';
 		}
 		else
 		{
 			var attrs = (cell.value != null) ? cell.value.attributes : null;
+
 			highlight.highlight(graph.view.getState(cell));
 	
 			if (attrs != null)
 			{
-				var ignored = ['label', 'tooltip', 'placeholders'];
-				var label = graph.sanitizeHtml(graph.getLabel(cell));
-				
-				if (label != null && label.length > 0)
-				{
-					div.innerHTML = '<h1>' + label + '</h1>';
-				}
-				else
-				{
-					div.innerHTML = '';
-				}
+				var accepted = ['description', 'reasoning'];
 				
 				for (var i = 0; i < attrs.length; i++)
 				{
-					if (mxUtils.indexOf(ignored, attrs[i].nodeName) < 0 &&
-						attrs[i].nodeValue.length > 0)
+					if (mxUtils.indexOf(accepted, attrs[i].nodeName) > -1 && attrs[i].nodeValue.length > 0)
 					{
-						div.innerHTML += '<h2>' + graph.sanitizeHtml(attrs[i].nodeName) + '</h2>' +
-							'<p>' + graph.sanitizeHtml(attrs[i].nodeValue) + '</p>';
+						div.innerHTML = '';
+						div.style.opacity = '0.9';
+						div.innerHTML += '<p>' + graph.sanitizeHtml(attrs[i].nodeValue) + '</p>';
 					}
-				}
-			}
-			else
-			{
-				var label = graph.convertValueToString(cell);
-				
-				if (label != null)
-				{
-					div.innerHTML = '<h1>' + graph.sanitizeHtml(label) + '</h1>';
-				}
-				else
-				{
-					div.innerHTML = '';
 				}
 			}
 		}
@@ -154,4 +160,5 @@ Draw.loadPlugin(function(ui) {
 			cellClicked(me.getCell());
 		}, 0);
 	};
+
 });
