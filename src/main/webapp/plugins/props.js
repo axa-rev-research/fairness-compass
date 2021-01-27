@@ -28,29 +28,31 @@ Draw.loadPlugin(function(ui) {
 	
 	document.body.appendChild(div);
 
-	
-	var parent = graph.getDefaultParent();
-	var cells = graph.getChildCells(parent);
-
+	window.setTimeout(function()
+	{
+		var parent = graph.getDefaultParent();
+		var cells = graph.getChildCells(parent);
 		
-	for (var i=0; i<cells.length; i++)
-    {
-    	var cell = cells[i];
-    	var attrs = (cell.value != null) ? cell.value.attributes : null;
-    	
-		if (attrs != null)
-		{
-			for (var j = 0; j < attrs.length; j++) {
-				
-				if (attrs[j].nodeName == "reasoning")
-				{
-					var highlight = new mxCellHighlight(graph, '#ebe834', 8);
-					highlight.highlight(graph.view.getState(cell));
+		for (var i=0; i<cells.length; i++)
+    	{
+    		var cell = cells[i];
+    		var attrs = (cell.value != null) ? cell.value.attributes : null;
+    		
+			if (attrs != null)
+			{
+				for (var j = 0; j < attrs.length; j++) {
+					
+					if (attrs[j].nodeName == "reasoning")
+					{
+						var highlight = new mxCellHighlight(graph, '#ebe834', 8);
+						highlight.highlight(graph.view.getState(cell));
+		
+					}
 				}
-			}
-		}					
-	}
-
+			}					
+		}
+	}, 10);
+	
 	// Highlights current cell
 	var highlight = new mxCellHighlight(graph, '#00ff00', 8);
 
