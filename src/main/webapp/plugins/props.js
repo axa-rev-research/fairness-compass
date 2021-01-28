@@ -1,5 +1,5 @@
 /**
- * Sample plugin.
+ * Extended version of the props plugin.
  */
 Draw.loadPlugin(function(ui) {
 	
@@ -16,8 +16,6 @@ Draw.loadPlugin(function(ui) {
 	div.style.right = '20px';
 	
 	var graph = ui.editor.graph;
-
-    var study = (urlParams['study'] == "1")
 	
 	// Made for chromeless mode
 	if (!ui.editor.isChromelessView())
@@ -55,8 +53,6 @@ Draw.loadPlugin(function(ui) {
 	
 	// Highlights current cell
 	var highlight = new mxCellHighlight(graph, '#00ff00', 8);
-
-    
 
 	/**
 	 * Updates the properties panel
