@@ -16,7 +16,7 @@
 			<arg value="../../src/main/webapp/js/stencils.min.js"/>
 		</java>
 		
-		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${war.dir}/js/shapes.min.js">
+		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${war.dir}/js/shapes-14-6-5.min.js">
 			<sources dir="${basedir}/../../build">
 				<file name="shapes.js" />
 			</sources>
@@ -32,10 +32,12 @@
 	<target name="app" depends="merge">
 		<delete file="${basedir}/.tmp0.js"/>
 		<echo file="${basedir}/.tmp0.js">
-			window.STENCIL_PATH = window.STENCIL_PATH || 'https://viewer.diagrams.net/stencils';
+			window.PROXY_URL = window.PROXY_URL || 'https://viewer.diagrams.net/proxy';
 			window.SHAPES_PATH = window.SHAPES_PATH || 'https://viewer.diagrams.net/shapes';
-			window.mxBasePath = window.mxBasePath || 'https://viewer.diagrams.net/mxgraph/';
+			window.STENCIL_PATH = window.STENCIL_PATH || 'https://viewer.diagrams.net/stencils';
+			window.GRAPH_IMAGE_PATH  = window.GRAPH_IMAGE_PATH || 'https://viewer.diagrams.net/img';
 			window.mxImageBasePath = window.mxImageBasePath || 'https://viewer.diagrams.net/mxgraph/images';
+			window.mxBasePath = window.mxBasePath || 'https://viewer.diagrams.net/mxgraph/';
 			window.mxLoadStylesheets = window.mxLoadStylesheets || false;
 		</echo>
 
@@ -251,7 +253,7 @@
 			<filelist dir="${basedir}" files="base-viewer.min.js,.tmp2.min.js"/>
     	</concat>
 
-		<!-- Disables eval for JS (uses shapes.min.js) and registers PWA -->
+		<!-- Disables eval for JS (uses shapes-14-6-5.min.js) and registers PWA -->
 		<echo file="${basedir}/.tmp3.js">
 			mxStencilRegistry.allowEval = false;
 			
@@ -276,7 +278,7 @@
 		
 		<concat destfile="${war.dir}/js/viewer-static.min.js" fixlastline="yes" append="no">
 			<filelist dir="${basedir}" files="base-viewer.min.js"/>
-			<filelist dir="${war.dir}/js" files="shapes.min.js"/>
+			<filelist dir="${war.dir}/js" files="shapes-14-6-5.min.js"/>
 			<filelist dir="${basedir}" files=".tmp3.js,.tmp2.min.js"/>
 		</concat>
 
@@ -422,8 +424,15 @@
 				<file name="GitLabFile.js" />
 				<file name="GitLabLibrary.js" />
 				<file name="GitLabClient.js" />
+				<file name="NotionFile.js" />
+				<file name="NotionLibrary.js" />
+				<file name="NotionClient.js" />
 				<file name="DrawioComment.js" />
 				<file name="DriveComment.js" />
+			</sources>
+			
+			<sources dir="${war.dir}/js/onedrive">
+				<file name="mxODPicker.js" />
 			</sources>
 			
 			<sources dir="${war.dir}/js/diagramly">

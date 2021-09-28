@@ -315,7 +315,7 @@
 									{
 										mxscript('js/stencils.min.js', function()
 										{
-											mxscript('js/shapes.min.js', function()
+											mxscript('js/shapes-14-6-5.min.js', function()
 											{
 												mxscript('js/PostConfig.js');
 											});
@@ -373,12 +373,14 @@
 			margin-top:40px;
 			margin-bottom:30px;
 			padding:20px;
+			text-align:center;
+			min-width:50%;
 		}
 		.geBlock h1, .geBlock h2 {
 			margin-top:0px;
 			padding-top:0px;
 		}
-		.geEditor ::-webkit-scrollbar {
+		.geEditor *:not(.geScrollable)::-webkit-scrollbar {
 		    width:14px;
 		    height:14px;
 		}
@@ -396,7 +398,7 @@
 			border:solid transparent;
 			border-radius:10px;
 		}
-		.geEditor ::-webkit-scrollbar-thumb:hover{
+		.geEditor ::-webkit-scrollbar-thumb:hover {
 			background-color:rgba(0,0,0,.4);
 		}
 		.geTemplate {
@@ -427,7 +429,7 @@
 </head>
 <body class="geEditor">
 <div id="geInfo">
-	<div class="geBlock" style="text-align:center;min-width:50%;">
+	<div class="geBlock">
 		<h1>Flowchart Maker and Online Diagram Software</h1>
 		<p>
 			diagrams.net (formerly draw.io) is free online diagram software. You can use it as a flowchart maker, network diagram software, to create UML online, as an ER diagram tool, 

@@ -4,7 +4,7 @@ window.DRAW_MATH_URL = 'math';
 window.DRAWIO_BASE_URL = '.'; //Prevent access to online website since it is not allowed
 FeedbackDialog.feedbackUrl = 'https://log.draw.io/email';
 
-//Disables eval for JS (uses shapes.min.js)
+//Disables eval for JS (uses shapes-14-6-5.min.js)
 mxStencilRegistry.allowEval = false;
 
 (function()
@@ -113,6 +113,10 @@ mxStencilRegistry.allowEval = false;
 					if (plugins[i].startsWith('/plugins/'))
 					{
 						plugins[i] = '.' + plugins[i];
+					}
+					else if (plugins[i].startsWith('plugins/'))
+					{
+						plugins[i] = './' + plugins[i];
 					}
 					//Support old plugins added using file:// workaround
 					else if (!plugins[i].startsWith('file://'))
@@ -235,7 +239,7 @@ mxStencilRegistry.allowEval = false;
 		//On windows, misconfigured Documents folder cause an exception
 		try
 		{
-			return require('electron').remote.app.getPath('documents');
+			return require('@electron/remote').app.getPath('documents');
 		}
 		catch(e) {}
 		
@@ -247,7 +251,7 @@ mxStencilRegistry.allowEval = false;
 		try
 		{
 			var fs = require('fs');
-			var appDataDir = require('electron').remote.app.getPath('appData');
+			var appDataDir = require('@electron/remote').app.getPath('appData');
         	var drawioDir = appDataDir + '/draw.io';
         	
         	if (!fs.existsSync(drawioDir)) //Usually this dir already exists
@@ -325,8 +329,7 @@ mxStencilRegistry.allowEval = false;
 		{
 			if (editorUi.getCurrentFile() != null)
 			{
-				const electron = require('electron');
-				var remote = electron.remote;
+				var remote = require('@electron/remote');
 				var dialog = remote.dialog;
 				const sysPath = require('path')
 				var lastDir = localStorage.getItem('.lastImpDir');
@@ -447,7 +450,6 @@ mxStencilRegistry.allowEval = false;
 						    					else
 						    					{
 						    						asImage = true;
-						    						data = btoa(data);
 						    					}
 					    					}
 						    			}
@@ -473,13 +475,8 @@ mxStencilRegistry.allowEval = false;
 											};
 											
 											var format = path.substring(path.lastIndexOf('.') + 1);
-											
-											if (format == 'svg')
-											{
-												format = 'svg+xml';
-											}
-											
-											img.src = 'data:image/' + format + ';base64,' + data;
+											img.src = (format == 'svg') ? Editor.createSvgDataUri(data) :
+												'data:image/' + format + ';base64,' + data;
 										}
 										else
 										{
@@ -525,54 +522,7 @@ mxStencilRegistry.allowEval = false;
 		// Adds shortcut keys for file operations
 		editorUi.keyHandler.bindAction(78, true, 'new'); // Ctrl+N
 		editorUi.keyHandler.bindAction(79, true, 'open'); // Ctrl+O
-		
-		var copyAsImage = this.actions.addAction('copyAsImage', mxUtils.bind(this, function()
-		{
-			const electron = require('electron');
-			var remote = electron.remote;
-			var clipboard = remote.clipboard;
-			var nativeImage = remote.nativeImage;
-			
-			if (editorUi.spinner.spin(document.body, mxResources.get('exporting')))
-			{
-				editorUi.exportToCanvas(function(canvas)
-				{
-			   		try
-			   		{
-			   			var img = nativeImage.createFromDataURL(editorUi.createImageDataUri(canvas, null, 'png'));
-			   			clipboard.writeImage(img);
-		   				editorUi.spinner.stop();
-			   		}
-			   		catch (e)
-			   		{
-			   			editorUi.handleError(e);
-			   		}
-				}, null, null, null, function(e)
-				{
-					editorUi.spinner.stop();
-					editorUi.handleError(e);
-			   	}, null, false, 1, true);
-			}
-		}));
-		
-		copyAsImage.isEnabled = function()
-		{
-			return editorUi.isExportToCanvas() && !editorUi.editor.graph.isSelectionEmpty();
-		}
-	
-		// Inserts copyAsImage into popup menu
-		editorUi.menus.addPopupMenuEditItems = function(menu, cell, evt)
-		{
-			if (editorUi.editor.graph.isSelectionEmpty())
-			{
-				this.addMenuItems(menu, ['pasteHere'], null, evt);
-			}
-			else
-			{
-				this.addMenuItems(menu, ['delete', '-', 'cut', 'copy', 'copyAsImage', '-', 'duplicate'], null, evt);
-			}
-		};
-		
+
 		function createGraph()
 		{
 			var graph = new Graph();
@@ -594,8 +544,7 @@ mxStencilRegistry.allowEval = false;
 				{
 					var tmpGraph = createGraph();
 					tmpGraph.importCells(cells, 0, 0, tmpGraph.getDefaultParent());
-					const electron = require('electron');
-					var remote = electron.remote;
+					var remote = require('@electron/remote');
 					var clipboard = remote.clipboard;
 					var codec = new mxCodec();
 		            var node = codec.encode(tmpGraph.getModel());
@@ -613,8 +562,7 @@ mxStencilRegistry.allowEval = false;
 		{
 			try
 			{
-				const electron = require('electron');
-				var remote = electron.remote;
+				var remote = require('@electron/remote');
 				var clipboard = remote.clipboard;
 				var modelString = clipboard.readText(); 
 				
@@ -713,8 +661,7 @@ mxStencilRegistry.allowEval = false;
 				
 				var extPluginsBtn = mxUtils.button(mxResources.get('selectFile') + '...', function()
 				{
-					const electron = require('electron');
-					var remote = electron.remote;
+					var remote = require('@electron/remote');
 					var dialog = remote.dialog;
 					const sysPath = require('path');
 					var lastDir = localStorage.getItem('.lastPluginDir');
@@ -771,7 +718,7 @@ mxStencilRegistry.allowEval = false;
 				{
 	        		callback(App.pluginRegistry[pluginsSelect.value]);
 				}));
-				editorUi.showDialog(dlg.container, 300, 110, true, true);
+				editorUi.showDialog(dlg.container, 300, 120, true, true);
 			},
 			function(plugin)
 			{
@@ -985,8 +932,7 @@ mxStencilRegistry.allowEval = false;
 	// Uses local picker
 	App.prototype.chooseFileEntry = function(fn)
 	{
-		const electron = require('electron');
-		var remote = electron.remote;
+		var remote = require('@electron/remote');
 		var dialog = remote.dialog;
 		const sysPath = require('path')
 		var lastDir = localStorage.getItem('.lastOpenDir');
@@ -1453,8 +1399,7 @@ mxStencilRegistry.allowEval = false;
 			
 			if (this.fileObject == null)
 			{
-				const electron = require('electron');
-				var remote = electron.remote;
+				var remote = require('@electron/remote');
 				var dialog = remote.dialog;
 				const sysPath = require('path')
 				var lastDir = localStorage.getItem('.lastSaveDir');
@@ -1500,8 +1445,7 @@ mxStencilRegistry.allowEval = false;
 
 	LocalFile.prototype.saveAs = function(title, success, error)
 	{
-		const electron = require('electron');
-		var remote = electron.remote;
+		var remote = require('@electron/remote');
 		var dialog = remote.dialog;
 		const sysPath = require('path')
 		var lastDir = localStorage.getItem('.lastSaveDir');
@@ -1687,8 +1631,26 @@ mxStencilRegistry.allowEval = false;
 			}
 		}
 	};
-	
-	
+		
+	/**
+	 * Copies the given cells and XML to the clipboard as an embedded image.
+	 */
+	EditorUi.prototype.writeImageToClipboard = function(dataUrl, w, h, error)
+	{
+		try
+		{
+			const remote = require('@electron/remote');
+			
+			remote.clipboard.write({image: remote.
+				nativeImage.createFromDataURL(dataUrl), html: '<img src="' +
+				dataUrl + '" width="' + w + '" height="' + h + '">'});
+		}
+		catch (e)
+		{
+			error(e);
+		}
+	};
+
 	/**
 	 * Updates action states depending on the selection.
 	 */
@@ -1773,7 +1735,8 @@ mxStencilRegistry.allowEval = false;
 	}
 	
 		//Direct export to pdf
-		EditorUi.prototype.createDownloadRequest = function(filename, format, ignoreSelection, base64, transparent, currentPage, scale, border, grid)
+		EditorUi.prototype.createDownloadRequest = function(filename, format, ignoreSelection, base64, transparent, 
+			currentPage, scale, border, grid, includeXml)
 		{
 			var graph = this.editor.graph;
 			var bounds = graph.getGraphBounds();
@@ -1785,7 +1748,7 @@ mxStencilRegistry.allowEval = false;
 			var range = null;
 			var allPages = null;
 			
-			var embed = '0';
+			var embed = (includeXml) ? '1' : '0';
 			
 			if (format == 'pdf' && currentPage == false)
 			{
@@ -1907,8 +1870,7 @@ mxStencilRegistry.allowEval = false;
 	
 	EditorUi.prototype.saveData = function(filename, format, data, mimeType, base64Encoded)
 	{
-		const electron = require('electron');
-		var remote = electron.remote;
+		var remote = require('@electron/remote');
 		var dialog = remote.dialog;
 		var resume = (this.spinner != null && this.spinner.pause != null) ? this.spinner.pause() : function() {};
 		const sysPath = require('path')

@@ -939,6 +939,17 @@ DriveClient.prototype.loadDescriptor = function(id, success, error, fields)
 	}, success, error);
 };
 
+DriveClient.prototype.listFiles = function(searchStr, afterDate, mineOnly, success, error)
+{
+	this.executeRequest({
+		url: '/files?supportsAllDrives=true&includeItemsFromAllDrives=true&q=' + encodeURIComponent('(mimeType contains \'' + this.xmlMimeType + '\') ' +
+		(searchStr? ' and (title contains \'' + searchStr + '\')' : '') +
+		(afterDate? ' and (modifiedDate > \'' + afterDate.toISOString() + '\')' : '') +
+		(mineOnly? ' and (\'me\' in owners)' : '')) +
+		'&orderBy=modifiedDate desc,title'
+	}, success, error);
+};
+
 /**
  * Gets the channel ID from the given descriptor.
  */
@@ -2027,6 +2038,46 @@ DriveClient.prototype.createUploadRequest = function(id, metadata, data, revisio
 	}
 	
 	return reqObj;
+};
+
+/**
+ * Translates this point by the given vector.
+ * 
+ * @param {number} dx X-coordinate of the translation.
+ * @param {number} dy Y-coordinate of the translation.
+ */
+DriveClient.prototype.createLinkPicker = function()
+{
+	var name = 'linkPicker';
+	var picker = pickers[name];
+	
+	if (picker == null || pickers[name + 'Token'] != _token)
+	{
+		pickers[name + 'Token'] = _token;
+
+		var view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+			.setParent('root')
+			.setIncludeFolders(true)
+			.setSelectFolderEnabled(true);
+		var view2 = new google.picker.DocsView()
+			.setIncludeFolders(true)
+			.setSelectFolderEnabled(true);
+		var view21 = new google.picker.DocsView()
+			.setIncludeFolders(true)
+			.setEnableDrives(true)
+			.setSelectFolderEnabled(true);
+		picker = new google.picker.PickerBuilder()
+			.setAppId(this.appId)	
+			.setLocale(mxLanguage)
+			.setOAuthToken(pickers[name + 'Token'])
+			.enableFeature(google.picker.Feature.SUPPORT_DRIVES)
+			.addView(view)
+			.addView(view2)
+			.addView(view21)
+			.addView(google.picker.ViewId.RECENTLY_PICKED);
+	}
+	
+	return picker;
 };
 
 /**

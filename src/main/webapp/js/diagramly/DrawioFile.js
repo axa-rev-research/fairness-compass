@@ -91,6 +91,13 @@ DrawioFile.prototype.autosaveDelay = 1500;
 DrawioFile.prototype.maxAutosaveDelay = 30000;
 
 /**
+ * Specifies the delay for loading the file after an optimistic sync message.
+ * This should be the delay for the file to be saved minus the delay for the
+ * sync message to travel.
+ */
+DrawioFile.prototype.optimisticSyncDelay = 300;
+
+/**
  * Contains the thread for the next autosave.
  */
 DrawioFile.prototype.autosaveThread = null;
@@ -786,6 +793,7 @@ DrawioFile.prototype.patch = function(patches, resolver, undoable)
 		}
 		
 		this.ui.updateTabContainer();
+		this.ui.editor.fireEvent(new mxEventObject('pagesPatched', 'patches', patches));
 	}
 };
 
@@ -1196,6 +1204,7 @@ DrawioFile.prototype.loadPatchDescriptor = function(success, error)
 DrawioFile.prototype.patchDescriptor = function(desc, patch)
 {
 	this.setDescriptorEtag(desc, this.getDescriptorEtag(patch));
+	this.descriptorChanged();
 };
 
 /**
@@ -1443,8 +1452,6 @@ DrawioFile.prototype.saveDraft = function()
 	}
 	catch (e)
 	{
-		console.error(e);
-		
 		// Removes any stored draft
 		this.removeDraft();
 	}
@@ -1480,9 +1487,8 @@ DrawioFile.prototype.addUnsavedStatus = function(err)
 		{
 			var status = mxUtils.htmlEntities(mxResources.get('unsavedChanges'));
 			
-			this.ui.editor.setStatus('<div title="'+ status +
-				'" class="geStatusAlert" style="overflow:hidden;">' + status +
-				' (' + mxUtils.htmlEntities(err.message) + ')</div>');
+			this.ui.editor.setStatus('<div title="'+ status + '" class="geStatusAlert">' +
+				status + ' (' + mxUtils.htmlEntities(err.message) + ')</div>');
 		}
 		else
 		{
@@ -1506,15 +1512,16 @@ DrawioFile.prototype.addUnsavedStatus = function(err)
 
 			var status = mxUtils.htmlEntities(mxResources.get('unsavedChangesClickHereToSave')) +
 				((msg != null && msg != '') ? ' (' + mxUtils.htmlEntities(msg) + ')' : '');
-			this.ui.editor.setStatus('<div title="'+ status +
-				'" class="geStatusAlertOrange" style="cursor:pointer;overflow:hidden;">' + status + ' <img src="' +
-				Editor.saveImage + '" align="top" style="width:16px;margin-top:' + ((mxClient.IS_FF) ? -3 : -2) + 'px"/></div>');
+			this.ui.editor.setStatus('<div title="'+ status + '" class="geStatusAlertOrange">' + status +
+				' <img src="' + Editor.saveImage + '"/></div>');
 			
 			// Installs click handler for saving
 			var links = this.ui.statusContainer.getElementsByTagName('div');
 			
 			if (links != null && links.length > 0)
 			{
+				links[0].style.cursor = 'pointer';
+
 				mxEvent.addListener(links[0], 'click', mxUtils.bind(this, function()
 				{
 					this.ui.actions.get((this.ui.mode == null || !this.isEditable()) ?
@@ -1525,8 +1532,7 @@ DrawioFile.prototype.addUnsavedStatus = function(err)
 			{
 				var status = mxUtils.htmlEntities(mxResources.get('unsavedChanges'));
 				
-				this.ui.editor.setStatus('<div title="'+ status +
-					'" class="geStatusAlert" style="overflow:hidden;">' + status +
+				this.ui.editor.setStatus('<div title="'+ status + '" class="geStatusAlert">' + status +
 					' (' + mxUtils.htmlEntities(err.message) + ')</div>');
 			}
 			
@@ -1566,6 +1572,8 @@ DrawioFile.prototype.addConflictStatus = function(fn, message)
 	
 	if (links != null && links.length > 0)
 	{
+		links[0].style.cursor = 'pointer';
+
 		mxEvent.addListener(links[0], 'click', mxUtils.bind(this, function(evt)
 		{
 			if (mxEvent.getSource(evt).nodeName != 'IMG')
@@ -1586,10 +1594,9 @@ DrawioFile.prototype.addConflictStatus = function(fn, message)
  */
 DrawioFile.prototype.setConflictStatus = function(message)
 {
-	this.ui.editor.setStatus('<div title="'+ message + '" class="geStatusAlert geBlink" style="cursor:pointer;overflow:hidden;">' +
-		message + ' <a href="https://www.diagrams.net/doc/faq/synchronize" target="_blank"><img border="0" ' +
-		'style="margin-left:2px;cursor:help;opacity:0.5;width:16px;height:16px;" valign="bottom" src="' + Editor.helpImage +
-		'" style=""/></a></div>');
+	this.ui.editor.setStatus('<div title="'+ message + '" class="geStatusAlert">' + message +
+		' <a href="https://www.diagrams.net/doc/faq/synchronize" title="' + mxResources.get('help') +
+		'" target="_blank">' + '<img src="' + Editor.helpImage + '"/></a></div>');
 };
 
 /**
@@ -1820,7 +1827,7 @@ DrawioFile.prototype.handleFileError = function(err, manual)
 					msg = msg.substring(0, 60) + '...';
 				}
 				
-				this.ui.editor.setStatus('<div class="geStatusAlert" style="cursor:pointer;overflow:hidden;">' +
+				this.ui.editor.setStatus('<div class="geStatusAlert">' +
 					mxUtils.htmlEntities(mxResources.get('error')) + ((msg != null) ?
 					' (' + mxUtils.htmlEntities(msg) + ')' : '') + '</div>');
 			}
@@ -1940,6 +1947,9 @@ DrawioFile.prototype.fileChanged = function()
 			this.ageStart = new Date();
 		}
 		
+		//Send changes immidiately if P2P is enabled
+		this.sendFileChanges();
+		
 		this.autosave(this.autosaveDelay, this.maxAutosaveDelay, mxUtils.bind(this, function(resp)
 		{
 			this.ui.stopSanityCheck();
@@ -1973,13 +1983,22 @@ DrawioFile.prototype.fileChanged = function()
 };
 
 /**
+ * Returns true if the notification to update should be sent
+ * together with the save request.
+ */
+DrawioFile.prototype.isOptimisticSync = function()
+{
+	return false;
+};
+
+/**
  * Creates a secret and token pair for writing a patch to the cache.
  */
 DrawioFile.prototype.createSecret = function(success)
 {
 	var secret = Editor.guid(32);
 	
-	if (this.sync != null)
+	if (this.sync != null && !this.isOptimisticSync())
 	{
 		this.sync.createToken(secret, mxUtils.bind(this, function(token)
 		{
@@ -1998,6 +2017,46 @@ DrawioFile.prototype.createSecret = function(success)
 /**
  * Invokes sync and updates shadow document.
  */
+DrawioFile.prototype.fileSaving = function()
+{
+	if (this.sync != null && this.isOptimisticSync())
+	{
+		this.sync.fileSaving();
+	}
+	
+	if (urlParams['test'] == '1')
+	{
+		EditorUi.debug('DrawioFile.fileSaving', [this]);
+	}
+};
+
+DrawioFile.prototype.sendFileChanges = function()
+{
+	try
+	{
+		if (this.p2pCollab != null && this.sync != null)
+		{
+			//TODO Should we check for modified?
+			this.updateFileData(); //TODO Calling this function ealy could have side effects + overhead of calling it twice (here and in save)
+			this.sync.sendFileChanges(this.ui.getPagesForNode(
+				mxUtils.parseXml(this.getData()).documentElement),
+				this.desc);
+				
+			if (urlParams['test'] == '1')
+			{
+				EditorUi.debug('DrawioFile.sendFileChanges', [this]);
+			}
+		}
+	}
+	catch (e)
+	{
+		console.log(e);
+	}
+};
+
+/**
+ * Invokes sync and updates shadow document.
+ */
 DrawioFile.prototype.fileSaved = function(savedData, lastDesc, success, error, token)
 {
 	this.lastSaved = new Date();
@@ -2009,10 +2068,16 @@ DrawioFile.prototype.fileSaved = function(savedData, lastDesc, success, error, t
 		this.inConflictState = false;
 		this.invalidChecksum = false;
 
-		if (this.sync == null)
+		if (this.sync == null || this.isOptimisticSync())
 		{
 			this.shadowData = savedData;
 			this.shadowPages = null;
+			
+			if (this.sync != null)
+			{
+				this.sync.lastModified = this.getLastModifiedDate();
+				this.sync.resetUpdateStatusThread();
+			}
 			
 			if (success != null)
 			{
@@ -2057,6 +2122,11 @@ DrawioFile.prototype.fileSaved = function(savedData, lastDesc, success, error, t
 		{
 			// ignore
 		}
+	}
+	
+	if (urlParams['test'] == '1')
+	{
+		EditorUi.debug('DrawioFile.fileSaved', [this]);
 	}
 };
 

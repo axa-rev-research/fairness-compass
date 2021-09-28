@@ -14,9 +14,7 @@ var OpenDialog = function()
 	iframe.style.overflow = 'hidden';
 	iframe.frameBorder = '0';
 	
-	// Adds padding as a workaround for box model in older IE versions
-	var dx = (mxClient.IS_VML && (document.documentMode == null || document.documentMode < 8)) ? 20 : 0;
-	
+	var dx = 0;
 	iframe.setAttribute('width', (((Editor.useLocalStorage) ? 640 : 320) + dx) + 'px');
 	iframe.setAttribute('height', (((Editor.useLocalStorage) ? 480 : 220) + dx) + 'px');
 	iframe.setAttribute('src', OPEN_FORM);
@@ -33,7 +31,6 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
 	
 	var input = document.createElement('input');
 	input.style.marginBottom = '10px';
-	input.style.width = '216px';
 	
 	// Required for picker to render in IE
 	if (mxClient.IS_IE)
@@ -41,7 +38,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
 		input.style.marginTop = '10px';
 		document.body.appendChild(input);
 	}
-	
+
 	var applyFunction = (apply != null) ? apply : this.createApplyFunction();
 	
 	function doApply()
@@ -96,7 +93,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
 		return table;
 	};
 	
-	function addPresets(presets, rowLength, defaultColor, addResetOption)
+	var addPresets = mxUtils.bind(this, function(presets, rowLength, defaultColor, addResetOption)
 	{
 		rowLength = (rowLength != null) ? rowLength : 12;
 		var table = document.createElement('table');
@@ -115,7 +112,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
 			
 			for (var i = 0; i < rowLength; i++)
 			{
-				(function(clr)
+				(mxUtils.bind(this, function(clr)
 				{
 					var td = document.createElement('td');
 					td.style.border = '1px solid black';
@@ -132,9 +129,15 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
 					{
 						td.style.background = 'url(\'' + Dialog.prototype.noColorImage + '\')';
 					}
-					else
+					else if (clr != null)
 					{
 						td.style.backgroundColor = '#' + clr;
+						var name = this.colorNames[clr.toUpperCase()];
+
+						if (name != null)
+						{
+							td.setAttribute('title', name);
+						}
 					}
 					
 					tr.appendChild(td);
@@ -158,7 +161,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
 						
 						mxEvent.addListener(td, 'dblclick', doApply);
 					}
-				})(presets[row * rowLength + i]);
+				}))(presets[row * rowLength + i]);
 			}
 			
 			tbody.appendChild(tr);
@@ -189,9 +192,48 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
 		center.appendChild(table);
 		
 		return table;
-	};
+	});
 
 	div.appendChild(input);
+
+	if (!mxClient.IS_IE && !mxClient.IS_IE11)
+	{
+		input.style.width = '182px';
+
+		var clrInput = document.createElement('input');
+		clrInput.setAttribute('type', 'color');
+		clrInput.style.visibility = 'hidden';
+		clrInput.style.width = '0px';
+		clrInput.style.height = '0px';
+		clrInput.style.border = 'none';
+		clrInput.style.marginLeft = '2px';
+		div.style.whiteSpace = 'nowrap';
+		div.appendChild(clrInput);
+
+		div.appendChild(mxUtils.button('...', function()
+		{
+			// LATER: Check if clrInput is expanded
+			if (document.activeElement == clrInput)
+			{
+				input.focus();
+			}
+			else
+			{
+				clrInput.value = '#' + input.value;
+				clrInput.click();
+			}
+		}));
+
+		mxEvent.addListener(clrInput, 'input', function()
+		{
+			picker.fromString(clrInput.value.substring(1));
+		});
+	}
+	else
+	{
+		input.style.width = '216px';
+	}
+
 	mxUtils.br(div);
 	
 	// Adds recent colors
@@ -275,6 +317,11 @@ var ColorDialog = function(editorUi, color, apply, cancelFn)
  * Creates function to apply value
  */
 ColorDialog.prototype.presetColors = ['E6D0DE', 'CDA2BE', 'B5739D', 'E1D5E7', 'C3ABD0', 'A680B8', 'D4E1F5', 'A9C4EB', '7EA6E0', 'D5E8D4', '9AC7BF', '67AB9F', 'D5E8D4', 'B9E0A5', '97D077', 'FFF2CC', 'FFE599', 'FFD966', 'FFF4C3', 'FFCE9F', 'FFB570', 'F8CECC', 'F19C99', 'EA6B66']; 
+
+/**
+ * Creates function to apply value
+ */
+ ColorDialog.prototype.colorNames = {};
 
 /**
  * Creates function to apply value
@@ -953,6 +1000,25 @@ var ExportDialog = function(editorUi)
 	tbody.appendChild(row);
 	
 	row = document.createElement('tr');
+	
+	td = document.createElement('td');
+	td.style.fontSize = '10pt';
+	mxUtils.write(td, mxResources.get('grid') + ':');
+	
+	row.appendChild(td);
+	
+	var gridCheckbox = document.createElement('input');
+	gridCheckbox.setAttribute('type', 'checkbox');
+	gridCheckbox.checked = false;
+
+	td = document.createElement('td');
+	td.appendChild(gridCheckbox);
+	
+	row.appendChild(td);
+	
+	tbody.appendChild(row);
+	
+	row = document.createElement('tr');
 
 	td = document.createElement('td');
 	td.style.fontSize = '10pt';
@@ -1009,6 +1075,15 @@ var ExportDialog = function(editorUi)
 		else
 		{
 			transparentCheckbox.setAttribute('disabled', 'disabled');
+		}
+		
+		if (imageFormatSelect.value === 'png' || imageFormatSelect.value === 'jpg' || imageFormatSelect.value === 'pdf')
+		{
+			gridCheckbox.removeAttribute('disabled');
+		}
+		else
+		{
+			gridCheckbox.setAttribute('disabled', 'disabled');
 		}
 		
 		if (imageFormatSelect.value === 'png')
@@ -1137,7 +1212,7 @@ var ExportDialog = function(editorUi)
 			}
 			
 			ExportDialog.lastBorderValue = b;
-			ExportDialog.exportFile(editorUi, name, format, bg, s, b, dpi);
+			ExportDialog.exportFile(editorUi, name, format, bg, s, b, dpi, gridCheckbox.checked);
 		}
 	}));
 	saveBtn.className = 'geBtn gePrimaryBtn';
@@ -1186,7 +1261,7 @@ ExportDialog.showXmlOption = true;
  * parameter and value to be used in the request in the form
  * key=value, where value should be URL encoded.
  */
-ExportDialog.exportFile = function(editorUi, name, format, bg, s, b, dpi)
+ExportDialog.exportFile = function(editorUi, name, format, bg, s, b, dpi, grid)
 {
 	var graph = editorUi.editor.graph;
 	
@@ -1420,7 +1495,36 @@ var EditDataDialog = function(ui, cell)
 		text.style.textAlign = 'center';
 		mxUtils.write(text, id);
 		
-		form.addField(mxResources.get('id') + ':', text);
+		var idInput = form.addField(mxResources.get('id') + ':', text);
+		
+		mxEvent.addListener(text, 'dblclick', function(evt)
+		{
+			if (mxEvent.isShiftDown(evt))
+			{
+				var dlg = new FilenameDialog(ui, id, mxResources.get('apply'), mxUtils.bind(this, function(value)
+				{
+					if (value != null && value.length > 0 && value != id)
+					{
+						if (graph.getModel().getCell(value) == null)
+						{
+							graph.getModel().cellRemoved(cell);
+							cell.setId(value);
+							id = value;
+							idInput.innerHTML = mxUtils.htmlEntities(value);
+							graph.getModel().cellAdded(cell);
+						}
+						else
+						{
+							ui.handleError({message: mxResources.get('alreadyExst', [value])});
+						}
+					}
+				}), mxResources.get('id'));
+				ui.showDialog(dlg.container, 300, 80, true, true);
+				dlg.init();
+			}
+		});
+
+		text.setAttribute('title', 'Shift+Double Click to Edit ID');
 	}
 	
 	for (var i = 0; i < temp.length; i++)
@@ -1430,7 +1534,13 @@ var EditDataDialog = function(ui, cell)
 	}
 	
 	var top = document.createElement('div');
-	top.style.cssText = 'position:absolute;left:30px;right:30px;overflow-y:auto;top:30px;bottom:80px;';
+	top.style.position = 'absolute';
+	top.style.top = '30px';
+	top.style.left = '30px';
+	top.style.right = '30px';
+	top.style.bottom = '80px';
+	top.style.overflowY = 'auto';
+	
 	top.appendChild(form.table);
 
 	var newProp = document.createElement('div');
@@ -1695,11 +1805,7 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
 	inner.style.whiteSpace = 'nowrap';
 	inner.style.textOverflow = 'clip';
 	inner.style.cursor = 'default';
-	
-	if (!mxClient.IS_VML)
-	{
-		inner.style.paddingRight = '20px';
-	}
+	inner.style.paddingRight = '20px';
 	
 	var linkInput = document.createElement('input');
 	linkInput.setAttribute('value', initialValue);
@@ -1721,8 +1827,8 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
 	cross.style.cursor = 'pointer';
 
 	// Workaround for inline-block not supported in IE
-	cross.style.display = (mxClient.IS_VML) ? 'inline' : 'inline-block';
-	cross.style.top = ((mxClient.IS_VML) ? 0 : 3) + 'px';
+	cross.style.display = 'inline-block';
+	cross.style.top = '3px';
 	
 	// Needed to block event transparency in IE
 	cross.style.background = 'url(' + IMAGE_PATH + '/transparent.gif)';
@@ -1741,7 +1847,7 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
 	{
 		linkInput.focus();
 		
-		if (mxClient.IS_GC || mxClient.IS_FF || document.documentMode >= 5 || mxClient.IS_QUIRKS)
+		if (mxClient.IS_GC || mxClient.IS_FF || document.documentMode >= 5)
 		{
 			linkInput.select();
 		}
@@ -1804,7 +1910,6 @@ var OutlineWindow = function(editorUi, x, y, w, h)
 	div.style.position = 'absolute';
 	div.style.width = '100%';
 	div.style.height = '100%';
-	div.style.border = '1px solid whiteSmoke';
 	div.style.overflow = 'hidden';
 
 	this.window = new mxWindow(mxResources.get('outline'), div, x, y, w, h, true, true);
@@ -1821,7 +1926,7 @@ var OutlineWindow = function(editorUi, x, y, w, h)
 		var ih = window.innerHeight || document.body.clientHeight || document.documentElement.clientHeight;
 		
 		x = Math.max(0, Math.min(x, iw - this.table.clientWidth));
-		y = Math.max(0, Math.min(y, ih - this.table.clientHeight - 48));
+		y = Math.max(0, Math.min(y, ih - this.table.clientHeight - ((urlParams['sketch'] == '1') ? 3 : 48)));
 
 		if (this.getX() != x || this.getY() != y)
 		{
@@ -1848,116 +1953,59 @@ var OutlineWindow = function(editorUi, x, y, w, h)
 		outline.destroy();
 	}
 
-	this.window.addListener(mxEvent.RESIZE, mxUtils.bind(this, function()
-   	{
-		outline.update(false);
-		outline.outline.sizeDidChange();
-   	}));
-	
 	this.window.addListener(mxEvent.SHOW, mxUtils.bind(this, function()
 	{
 		this.window.fit();
-		outline.suspended = false;
-		outline.outline.refresh();
-		outline.update();
+		outline.setSuspended(false);
 	}));
 	
 	this.window.addListener(mxEvent.HIDE, mxUtils.bind(this, function()
 	{
-		outline.suspended = true;
+		outline.setSuspended(true);
 	}));
 	
 	this.window.addListener(mxEvent.NORMALIZE, mxUtils.bind(this, function()
 	{
-		outline.suspended = false;
-		outline.update();
+		outline.setSuspended(false);
 	}));
 			
 	this.window.addListener(mxEvent.MINIMIZE, mxUtils.bind(this, function()
 	{
-		outline.suspended = true;
+		outline.setSuspended(true);
 	}));
-
-	var outlineCreateGraph = outline.createGraph;
-	outline.createGraph = function(container)
-	{
-		var g = outlineCreateGraph.apply(this, arguments);
-		g.gridEnabled = false;
-		g.pageScale = graph.pageScale;
-		g.pageFormat = graph.pageFormat;
-		g.background = (graph.background == null || graph.background == mxConstants.NONE) ? graph.defaultPageBackgroundColor : graph.background;
-		g.pageVisible = graph.pageVisible;
-
-		var current = mxUtils.getCurrentStyle(graph.container);
-		div.style.backgroundColor = current.backgroundColor;
-		
-		return g;
-	};
-	
-	function update()
-	{
-		outline.outline.pageScale = graph.pageScale;
-		outline.outline.pageFormat = graph.pageFormat;
-		outline.outline.pageVisible = graph.pageVisible;
-		outline.outline.background = (graph.background == null || graph.background == mxConstants.NONE) ? graph.defaultPageBackgroundColor : graph.background;;
-		
-		var current = mxUtils.getCurrentStyle(graph.container);
-		div.style.backgroundColor = current.backgroundColor;
-
-		if (graph.view.backgroundPageShape != null && outline.outline.view.backgroundPageShape != null)
-		{
-			outline.outline.view.backgroundPageShape.fill = graph.view.backgroundPageShape.fill;
-		}
-		
-		outline.outline.refresh();
-	};
 
 	outline.init(div);
 
-	editorUi.editor.addListener('resetGraphView', update);
-	editorUi.addListener('pageFormatChanged', update);
-	editorUi.addListener('backgroundColorChanged', update);
-	editorUi.addListener('backgroundImageChanged', update);
-	editorUi.addListener('pageViewChanged', function()
+	var zoomInAction = editorUi.actions.get('zoomIn');
+	var zoomOutAction = editorUi.actions.get('zoomOut');
+	mxEvent.addMouseWheelListener(function(evt, up)
 	{
-		update();
-		outline.update(true);
-	});
-	
-	if (outline.outline.dialect == mxConstants.DIALECT_SVG)
-	{
-		var zoomInAction = editorUi.actions.get('zoomIn');
-		var zoomOutAction = editorUi.actions.get('zoomOut');
-		
-		mxEvent.addMouseWheelListener(function(evt, up)
+		var outlineWheel = false;
+		var source = mxEvent.getSource(evt);
+
+		while (source != null)
 		{
-			var outlineWheel = false;
-			var source = mxEvent.getSource(evt);
-	
-			while (source != null)
+			if (source == outline.svg)
 			{
-				if (source == outline.outline.view.canvas.ownerSVGElement)
-				{
-					outlineWheel = true;
-					break;
-				}
-	
-				source = source.parentNode;
+				outlineWheel = true;
+				break;
 			}
-	
-			if (outlineWheel)
+
+			source = source.parentNode;
+		}
+
+		if (outlineWheel)
+		{
+			if (up)
 			{
-				if (up)
-				{
-					zoomInAction.funct();
-				}
-				else
-				{
-					zoomOutAction.funct();
-				}
+				zoomInAction.funct();
 			}
-		});
-	}
+			else
+			{
+				zoomOutAction.funct();
+			}
+		}
+	});
 };
 
 /**
@@ -1969,7 +2017,7 @@ var LayersWindow = function(editorUi, x, y, w, h)
 	
 	var div = document.createElement('div');
 	div.style.userSelect = 'none';
-	div.style.background = (Dialog.backdropColor == 'white') ? 'whiteSmoke' : Dialog.backdropColor;
+	div.style.background = (!Editor.isDarkMode()) ? '#fff' : Dialog.backdropColor;
 	div.style.border = '1px solid whiteSmoke';
 	div.style.height = '100%';
 	div.style.marginBottom = '10px';
@@ -1978,7 +2026,7 @@ var LayersWindow = function(editorUi, x, y, w, h)
 	var tbarHeight = (!EditorUi.compactUi) ? '30px' : '26px';
 	
 	var listDiv = document.createElement('div')
-	listDiv.style.backgroundColor = (Dialog.backdropColor == 'white') ? '#dcdcdc' : Dialog.backdropColor;
+	listDiv.style.backgroundColor = (!Editor.isDarkMode()) ? '#fff' : Dialog.backdropColor;
 	listDiv.style.position = 'absolute';
 	listDiv.style.overflow = 'auto';
 	listDiv.style.left = '0px';
@@ -2017,28 +2065,29 @@ var LayersWindow = function(editorUi, x, y, w, h)
 	ldiv.style.height = tbarHeight;
 	ldiv.style.overflow = 'hidden';
 	ldiv.style.padding = (!EditorUi.compactUi) ? '1px' : '4px 0px 3px 0px';
-	ldiv.style.backgroundColor = (Dialog.backdropColor == 'white') ? 'whiteSmoke' : Dialog.backdropColor;
+	ldiv.style.backgroundColor = (!Editor.isDarkMode()) ? 'whiteSmoke' : Dialog.backdropColor;
 	ldiv.style.borderWidth = '1px 0px 0px 0px';
 	ldiv.style.borderColor = '#c3c3c3';
 	ldiv.style.borderStyle = 'solid';
 	ldiv.style.display = 'block';
 	ldiv.style.whiteSpace = 'nowrap';
 	
-	if (mxClient.IS_QUIRKS)
-	{
-		ldiv.style.filter = 'none';
-	}
-	
 	var link = document.createElement('a');
 	link.className = 'geButton';
 	
-	if (mxClient.IS_QUIRKS)
+	var removeLink = link.cloneNode(false);
+	var img = document.createElement('img');
+	img.setAttribute('border', '0');
+	img.setAttribute('width', '22');
+	img.setAttribute('src', Editor.trashImage);
+	img.style.opacity = '0.9';
+
+	if (Editor.isDarkMode())
 	{
-		link.style.filter = 'none';
+		img.style.filter = 'invert(100%)';
 	}
-	
-	var removeLink = link.cloneNode();
-	removeLink.innerHTML = '<div class="geSprite geSprite-delete" style="display:inline-block;"></div>';
+
+	removeLink.appendChild(img);
 
 	mxEvent.addListener(removeLink, 'click', function(evt)
 	{
@@ -2083,8 +2132,11 @@ var LayersWindow = function(editorUi, x, y, w, h)
 
 	var insertLink = link.cloneNode();
 	insertLink.setAttribute('title', mxUtils.trim(mxResources.get('moveSelectionTo', ['...'])));
-	insertLink.innerHTML = '<div class="geSprite geSprite-insert" style="display:inline-block;"></div>';
-	
+
+	img = img.cloneNode(false);
+	img.setAttribute('src', Editor.verticalDotsImage);
+	insertLink.appendChild(img);
+
 	mxEvent.addListener(insertLink, 'click', function(evt)
 	{
 		if (graph.isEnabled() && !graph.isSelectionEmpty())
@@ -2116,9 +2168,12 @@ var LayersWindow = function(editorUi, x, y, w, h)
 
 	ldiv.appendChild(insertLink);
 	
-	var dataLink = link.cloneNode();
-	dataLink.innerHTML = '<div class="geSprite geSprite-dots" style="display:inline-block;"></div>';
-	dataLink.setAttribute('title', mxResources.get('rename'));
+	var dataLink = link.cloneNode(false);
+	dataLink.setAttribute('title', mxResources.get('editData'));
+
+	img = img.cloneNode(false);
+	img.setAttribute('src', Editor.editImage);
+	dataLink.appendChild(img);
 
 	mxEvent.addListener(dataLink, 'click', function(evt)
 	{
@@ -2154,9 +2209,13 @@ var LayersWindow = function(editorUi, x, y, w, h)
 		}
 	};
 	
-	var duplicateLink = link.cloneNode();
-	duplicateLink.innerHTML = '<div class="geSprite geSprite-duplicate" style="display:inline-block;"></div>';
-	
+	var duplicateLink = link.cloneNode(false);
+	duplicateLink.setAttribute('title', mxResources.get('duplicate'));
+
+	img = img.cloneNode(false);
+	img.setAttribute('src', Editor.duplicateImage);
+	duplicateLink.appendChild(img);
+
 	mxEvent.addListener(duplicateLink, 'click', function(evt)
 	{
 		if (graph.isEnabled())
@@ -2190,9 +2249,12 @@ var LayersWindow = function(editorUi, x, y, w, h)
 
 	ldiv.appendChild(duplicateLink);
 
-	var addLink = link.cloneNode();
-	addLink.innerHTML = '<div class="geSprite geSprite-plus" style="display:inline-block;"></div>';
+	var addLink = link.cloneNode(false);
 	addLink.setAttribute('title', mxResources.get('addLayer'));
+
+	img = img.cloneNode(false);
+	img.setAttribute('src', Editor.addImage);
+	addLink.appendChild(img);
 	
 	mxEvent.addListener(addLink, 'click', function(evt)
 	{
@@ -2220,24 +2282,51 @@ var LayersWindow = function(editorUi, x, y, w, h)
 	}
 	
 	ldiv.appendChild(addLink);
-	div.appendChild(ldiv);	
+	div.appendChild(ldiv);
+	
+	var layerDivs = new mxDictionary();
+	
+	var dot = document.createElement('span');
+	dot.setAttribute('title', mxResources.get('selectionOnly'));
+	dot.innerHTML = '&#8226;';
+	dot.style.position = 'absolute';
+	dot.style.fontWeight = 'bold';
+	dot.style.fontSize = '16pt';
+	dot.style.right = '2px';
+	dot.style.top = '2px';
+	
+	function updateLayerDot()
+	{
+		var div = layerDivs.get(graph.getLayerForCells(graph.getSelectionCells()));
+		
+		if (div != null)
+		{
+			div.appendChild(dot);
+		}
+		else if (dot.parentNode != null)
+		{
+			dot.parentNode.removeChild(dot);
+		}
+	};
 	
 	function refresh()
 	{
 		layerCount = graph.model.getChildCount(graph.model.root)
 		listDiv.innerHTML = '';
-
+		layerDivs.clear();
+		
 		function addLayer(index, label, child, defaultParent)
 		{
 			var ldiv = document.createElement('div');
 			ldiv.className = 'geToolbarContainer';
+			layerDivs.put(child, ldiv);
 
 			ldiv.style.overflow = 'hidden';
 			ldiv.style.position = 'relative';
 			ldiv.style.padding = '4px';
 			ldiv.style.height = '22px';
 			ldiv.style.display = 'block';
-			ldiv.style.backgroundColor = (Dialog.backdropColor == 'white') ? 'whiteSmoke' : Dialog.backdropColor;
+			ldiv.style.backgroundColor = (!Editor.isDarkMode()) ? 'whiteSmoke' : Dialog.backdropColor;
 			ldiv.style.borderWidth = '0px 0px 1px 0px';
 			ldiv.style.borderColor = '#c3c3c3';
 			ldiv.style.borderStyle = 'solid';
@@ -2283,22 +2372,67 @@ var LayersWindow = function(editorUi, x, y, w, h)
 				evt.preventDefault();
 			});
 
+			var inp = document.createElement('img');
+			inp.setAttribute('draggable', 'false');
+			inp.setAttribute('align', 'top');
+			inp.setAttribute('border', '0');
+			inp.style.width = '16px';
+			inp.style.padding = '0px 6px 0 4px';
+			inp.style.marginTop = '2px';
+			inp.style.cursor = 'pointer';
+			inp.setAttribute('title', mxResources.get(
+				graph.model.isVisible(child) ?
+				'hide' : 'show'));
+
+			if (graph.model.isVisible(child))
+			{
+				inp.setAttribute('src', Editor.visibleImage);
+				mxUtils.setOpacity(ldiv, 75);
+			}
+			else
+			{
+				inp.setAttribute('src', Editor.hiddenImage);
+				mxUtils.setOpacity(ldiv, 25);
+			}
+
+			if (Editor.isDarkMode())
+			{
+				inp.style.filter = 'invert(100%)';
+			}
+
+			left.appendChild(inp);
+			
+			mxEvent.addListener(inp, 'click', function(evt)
+			{
+				graph.model.setVisible(child, !graph.model.isVisible(child));
+				mxEvent.consume(evt);
+			});
+
 			var btn = document.createElement('img');
 			btn.setAttribute('draggable', 'false');
 			btn.setAttribute('align', 'top');
 			btn.setAttribute('border', '0');
-			btn.style.padding = '4px';
+			btn.style.width = '16px';
+			btn.style.padding = '0px 6px 0 0';
+			btn.style.marginTop = '2px';
 			btn.setAttribute('title', mxResources.get('lockUnlock'));
 
 			var style = graph.getCurrentCellStyle(child);
 
 			if (mxUtils.getValue(style, 'locked', '0') == '1')
 			{
-				btn.setAttribute('src', Dialog.prototype.lockedImage);
+				btn.setAttribute('src', Editor.lockedImage);
+				mxUtils.setOpacity(btn, 75);
 			}
 			else
 			{
-				btn.setAttribute('src', Dialog.prototype.unlockedImage);
+				btn.setAttribute('src', Editor.unlockedImage);
+				mxUtils.setOpacity(btn, 25);
+			}
+
+			if (Editor.isDarkMode())
+			{
+				btn.style.filter = 'invert(100%)';
 			}
 			
 			if (graph.isEnabled())
@@ -2334,34 +2468,24 @@ var LayersWindow = function(editorUi, x, y, w, h)
 
 			left.appendChild(btn);
 
-			var inp = document.createElement('input');
-			inp.setAttribute('type', 'checkbox');
-			inp.setAttribute('title', mxResources.get(graph.model.isVisible(child) ?
-				'hide' : 'show'));
-			inp.style.marginLeft = '4px';
-			inp.style.marginRight = '6px';
-			inp.style.marginTop = '4px';
-			left.appendChild(inp);
-			
-			if (graph.model.isVisible(child))
-			{
-				inp.setAttribute('checked', 'checked');
-				inp.defaultChecked = true;
-			}
+			var span = document.createElement('span');
+			mxUtils.write(span, label);
+			span.style.display = 'block';
+			span.style.whiteSpace = 'nowrap';
+			span.style.overflow = 'hidden';
+			span.style.textOverflow = 'ellipsis';
+			span.style.position = 'absolute';
+			span.style.left = '52px';
+			span.style.right = '8px';
+			span.style.top = '8px';
 
-			mxEvent.addListener(inp, 'click', function(evt)
-			{
-				graph.model.setVisible(child, !graph.model.isVisible(child));
-				mxEvent.consume(evt);
-			});
-
-			mxUtils.write(left, label);
+			left.appendChild(span);
 			ldiv.appendChild(left);
 			
 			if (graph.isEnabled())
 			{
 				// Fallback if no drag and drop is available
-				if (mxClient.IS_TOUCH || mxClient.IS_POINTER || mxClient.IS_VML ||
+				if (mxClient.IS_TOUCH || mxClient.IS_POINTER ||
 					(mxClient.IS_IE && document.documentMode < 10))
 				{
 					var right = document.createElement('div');
@@ -2369,7 +2493,7 @@ var LayersWindow = function(editorUi, x, y, w, h)
 					right.style.textAlign = 'right';
 					right.style.whiteSpace = 'nowrap';
 					right.style.position = 'absolute';
-					right.style.right = '6px';
+					right.style.right = '16px';
 					right.style.top = '6px';
 		
 					// Poor man's change layer order
@@ -2450,21 +2574,26 @@ var LayersWindow = function(editorUi, x, y, w, h)
 
 			if (graph.getDefaultParent() == child)
 			{
-				ldiv.style.background =  (Dialog.backdropColor == 'white') ? '#e6eff8' : '#505759';
+				ldiv.style.background = (!Editor.isDarkMode()) ? '#e6eff8' : '#505759';
 				ldiv.style.fontWeight = (graph.isEnabled()) ? 'bold' : '';
 				selectionLayer = child;
 			}
-			else
+
+			mxEvent.addListener(ldiv, 'click', function(evt)
 			{
-				mxEvent.addListener(ldiv, 'click', function(evt)
+				if (graph.isEnabled())
 				{
-					if (graph.isEnabled())
+					graph.setDefaultParent(defaultParent);
+					graph.view.setCurrentRoot(null);
+
+					if (mxEvent.isShiftDown(evt))
 					{
-						graph.setDefaultParent(defaultParent);
-						graph.view.setCurrentRoot(null);
+						graph.setSelectionCells(child.children);	
 					}
-				});
-			}
+					
+					mxEvent.consume(evt);
+				}
+			});
 			
 			listDiv.appendChild(ldiv);
 		};
@@ -2482,18 +2611,19 @@ var LayersWindow = function(editorUi, x, y, w, h)
 		var label = graph.convertValueToString(selectionLayer) || mxResources.get('background');
 		removeLink.setAttribute('title', mxResources.get('removeIt', [label]));
 		duplicateLink.setAttribute('title', mxResources.get('duplicateIt', [label]));
-		dataLink.setAttribute('title', mxResources.get('editData'));
 
 		if (graph.isSelectionEmpty())
 		{
 			insertLink.className = 'geButton mxDisabled';
 		}
+		
+		updateLayerDot();
 	};
 
 	refresh();
 	graph.model.addListener(mxEvent.CHANGE, refresh);
 	graph.addListener('defaultParentChanged', refresh);
-
+	
 	graph.selectionModel.addListener(mxEvent.CHANGE, function()
 	{
 		if (graph.isSelectionEmpty())
@@ -2504,10 +2634,12 @@ var LayersWindow = function(editorUi, x, y, w, h)
 		{
 			insertLink.className = 'geButton';
 		}
+		
+		updateLayerDot();
 	});
 
 	this.window = new mxWindow(mxResources.get('layers'), div, x, y, w, h, true, true);
-	this.window.minimumSize = new mxRectangle(0, 0, 120, 120);
+	this.window.minimumSize = new mxRectangle(0, 0, 150, 120);
 	this.window.destroyOnClose = false;
 	this.window.setMaximizable(false);
 	this.window.setResizable(true);
@@ -2533,7 +2665,7 @@ var LayersWindow = function(editorUi, x, y, w, h)
 		var ih = window.innerHeight || document.body.clientHeight || document.documentElement.clientHeight;
 		
 		x = Math.max(0, Math.min(x, iw - this.table.clientWidth));
-		y = Math.max(0, Math.min(y, ih - this.table.clientHeight - 48));
+		y = Math.max(0, Math.min(y, ih - this.table.clientHeight - ((urlParams['sketch'] == '1') ? 3 : 48)));
 
 		if (this.getX() != x || this.getY() != y)
 		{

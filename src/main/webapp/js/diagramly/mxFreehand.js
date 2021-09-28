@@ -8,6 +8,12 @@ function mxFreehand(graph)
 		return;
 	}
 	
+	// Stops drawing on escape
+	graph.addListener(mxEvent.ESCAPE, mxUtils.bind(this, function()
+	{
+		this.stopDrawing();
+	}));
+	
 	//Code inspired by https://stackoverflow.com/questions/40324313/svg-smooth-freehand-drawing
 	var bufferSize = mxFreehand.prototype.NORMAL_SMOOTHING;
 	var path = null;
@@ -17,6 +23,9 @@ function mxFreehand(graph)
 	var lastPart;
 	var closedPath = false; 
 	var autoClose = true;
+	var autoInsert = true;
+	var autoScroll = true;
+	var openFill = true;
 	var buffer = []; // Contains the last positions of the mouse cursor
 	var enabled = false;
 	var stopClickEnabled = true
@@ -31,6 +40,21 @@ function mxFreehand(graph)
 		autoClose = isAutoClose;
 	};
 
+	this.setAutoInsert = function(value)
+	{
+		autoInsert = value;
+	};
+	
+	this.setAutoScroll = function(value)
+	{
+		autoScroll = value;
+	};
+		
+	this.setOpenFill = function(value)
+	{
+		openFill = value;
+	};
+	
 	this.setStopClickEnabled = function(enabled)
 	{
 		stopClickEnabled = enabled;
@@ -65,6 +89,8 @@ function mxFreehand(graph)
 	{
 	    if (path)
 	    {
+			var lastLength = lastPart.length;
+		
 	    	// Click stops drawing
 	    	var doStop = stopClickEnabled && drawPoints.length > 0 &&
 	    		lastPart != null && lastPart.length < 2;
@@ -79,14 +105,24 @@ function mxFreehand(graph)
 	        partPathes.push(path);
 	        path = null;
 	        
-			if (doStop)
+			if (doStop || autoInsert)
 			{
 				this.stopDrawing();
+			}
+			
+			if (autoInsert && lastLength >= 2)
+			{
+				this.startDrawing();
 			}
 			
 	        mxEvent.consume(e);
 	    }
 	});
+	
+	this.createStyle = function(stencil)
+	{
+		return mxConstants.STYLE_SHAPE + '=' + stencil + ';fillColor=none;';
+	};
 	
 	this.stopDrawing = function() 
 	{
@@ -147,7 +183,7 @@ function mxFreehand(graph)
 				        	drawShape += '<line x="'+ startP.x.toFixed(2) + '" y="' + startP.y.toFixed(2) + '"/>';
 			        	}
 				        
-		        		drawShape += '</path>' + ((closedPath || tmpClosedPath)? '<fillstroke/>' : '<stroke/>');
+		        		drawShape += '</path>' + ((openFill || closedPath || tmpClosedPath)? '<fillstroke/>' : '<stroke/>');
 		        		start = i + 1;
 	        		}
 		        	else if (i == start)
@@ -161,28 +197,31 @@ function mxFreehand(graph)
 		        }
 		        
 		        drawShape += '</foreground></shape>';
-		        
-                var style = mxConstants.STYLE_SHAPE + '=stencil(' + Graph.compress(drawShape) + ');fillColor=none;';
-                var s = graph.view.scale;
-            	var tr = graph.view.translate;
-            	
-                var cell = new mxCell('', new mxGeometry(minX / s - tr.x, minY / s - tr.y, w / s, h / s), style);
-                cell.vertex = 1;
-                
-                graph.model.beginUpdate();
-                try
+
+				if (graph.isEnabled() && !graph.isCellLocked(graph.getDefaultParent()))
 				{
-                	cell = graph.addCell(cell);
+	                var style = this.createStyle('stencil(' + Graph.compress(drawShape) + ')');
+	                var s = graph.view.scale;
+	            	var tr = graph.view.translate;
+	            	
+	                var cell = new mxCell('', new mxGeometry(minX / s - tr.x, minY / s - tr.y, w / s, h / s), style);
+	                cell.vertex = 1;
+	                
+	                graph.model.beginUpdate();
+	                try
+					{
+	                	cell = graph.addCell(cell);
+		                
+		                graph.fireEvent(new mxEventObject('cellsInserted', 'cells', [cell]));
+		                graph.fireEvent(new mxEventObject('freehandInserted', 'cell', cell));
+					}
+	                finally
+					{
+	                	graph.model.endUpdate();
+					}
+					
+					graph.setSelectionCells([cell]);
 				}
-                finally
-				{
-                	graph.model.endUpdate();
-				}
-                
-                graph.fireEvent(new mxEventObject('cellsInserted', 'cells', [cell]));
-                graph.fireEvent(new mxEventObject('freehandInserted', 'cell', cell));
-                //While mouse is down, we cannot select!
-                setTimeout(function(){graph.setSelectionCells([cell]); }, 10);
 	        }
 
 	        for (var i = 0; i < partPathes.length; i++)
@@ -197,50 +236,101 @@ function mxFreehand(graph)
 
         setEnabled(false);
 	};
-	
-	mxEvent.addGestureListeners(svgElement, function (e) 
+
+	// Stops all interactions if freehand is enabled
+	graph.addListener(mxEvent.FIRE_MOUSE_EVENT, mxUtils.bind(this, function(sender, evt)
 	{
-		if (!enabled)
-		{
-			return;
-		}
+		var evtName = evt.getProperty('eventName');
+		var me = evt.getProperty('event');
 		
-		var strokeWidth = parseFloat(graph.currentVertexStyle[mxConstants.STYLE_STROKEWIDTH] || 1);
-		strokeWidth = Math.max(1, strokeWidth * graph.view.scale);
-	    path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-	    path.setAttribute("fill", "none");
-	    path.setAttribute("stroke", graph.currentVertexStyle[mxConstants.STYLE_STROKECOLOR] || "#000");
-	    path.setAttribute("stroke-width", strokeWidth);
-	    
-	    if (graph.currentVertexStyle[mxConstants.STYLE_DASHED] == '1')
-	    {
-	    	var dashPattern = graph.currentVertexStyle[mxConstants.STYLE_DASH_PATTERN] || '3 3';
-	    	
-	    	dashPattern = dashPattern.split(' ').map(function(p)
+		if (evtName == mxEvent.MOUSE_MOVE && enabled)
+		{
+			if (me.sourceState != null)
 			{
-	    		return parseFloat(p) * strokeWidth;
-			}).join(' ');
-	    	path.setAttribute('stroke-dasharray', dashPattern);
-	    }
-	    
-	    buffer = [];
-	    var pt = getMousePosition(e);
-	    appendToBuffer(pt);
-	    strPath = "M" + pt.x + " " + pt.y;
-	    drawPoints.push(pt);
-	    lastPart = [];
-	    path.setAttribute("d", strPath);
-	    svgElement.appendChild(path);
-	    mxEvent.consume(e);
-	}, function (e) 
+				me.sourceState.setCursor('crosshair');
+			}
+			
+			me.consume();
+		}
+	}));
+	
+	// Used to retrieve default styles
+	var edge = new mxCell();
+	edge.edge = true;
+	
+	// Implements a listener for hover and click handling
+	graph.addMouseListener(
 	{
-	    if (path) 
+	    mouseDown: mxUtils.bind(this, function(sender, me)
 	    {
-	        appendToBuffer(getMousePosition(e));
-	        updateSvgPath();
-	        mxEvent.consume(e);
-	    }
-	}, endPath);
+			if (graph.isEnabled() && !graph.isCellLocked(graph.getDefaultParent()))
+		    {
+				var e = me.getEvent();
+				
+				if (!enabled || mxEvent.isPopupTrigger(e) || mxEvent.isMultiTouchEvent(e))
+				{
+					return;
+				}
+				
+				var defaultStyle = graph.getCurrentCellStyle(edge);
+				var strokeWidth = parseFloat(graph.currentVertexStyle[mxConstants.STYLE_STROKEWIDTH] || 1);
+				strokeWidth = Math.max(1, strokeWidth * graph.view.scale);
+			    path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+			    path.setAttribute('fill', 'none');
+			    path.setAttribute('stroke', mxUtils.getValue(graph.currentVertexStyle, mxConstants.STYLE_STROKECOLOR,
+					mxUtils.getValue(defaultStyle, mxConstants.STYLE_STROKECOLOR, '#000')));
+			    path.setAttribute('stroke-width', strokeWidth);
+			    
+			    if (graph.currentVertexStyle[mxConstants.STYLE_DASHED] == '1')
+			    {
+			    	var dashPattern = graph.currentVertexStyle[mxConstants.STYLE_DASH_PATTERN] || '3 3';
+			    	
+			    	dashPattern = dashPattern.split(' ').map(function(p)
+					{
+			    		return parseFloat(p) * strokeWidth;
+					}).join(' ');
+			    	path.setAttribute('stroke-dasharray', dashPattern);
+			    }
+			    
+			    buffer = [];
+			    var pt = getMousePosition(e);
+			    appendToBuffer(pt);
+			    strPath = 'M' + pt.x + ' ' + pt.y;
+			    drawPoints.push(pt);
+			    lastPart = [];
+			    path.setAttribute('d', strPath);
+			    svgElement.appendChild(path);
+	
+				me.consume();
+			}
+	    }),
+	    mouseMove: mxUtils.bind(this, function(sender, me)
+	    {
+		    if (path && graph.isEnabled() && !graph.isCellLocked(graph.getDefaultParent()))
+		    {
+	    		var e = me.getEvent();
+				var pt = getMousePosition(e);
+		        appendToBuffer(pt);
+		        updateSvgPath();
+				
+				if (autoScroll)
+				{
+					var tr = graph.view.translate;
+					graph.scrollRectToVisible(new mxRectangle(pt.x - tr.x, pt.y - tr.y).grow(20));
+				}
+				
+				me.consume();
+		    }
+	    }),
+	    mouseUp: mxUtils.bind(this, function(sender, me)
+	    {
+			if (path && graph.isEnabled() && !graph.isCellLocked(graph.getDefaultParent())) 
+			{
+				endPath(me.getEvent());
+				me.consume();
+			}
+	    })	
+	});
 
 	var getMousePosition = function (e) 
 	{
@@ -293,22 +383,22 @@ function mxFreehand(graph)
 	    if (pt) 
 	    {
 	        // Get the smoothed part of the path that will not change
-	        strPath += " L" + pt.x + " " + pt.y;
+	        strPath += ' L' + pt.x + ' ' + pt.y;
 	        drawPoints.push(pt);
 	        // Get the last part of the path (close to the current mouse position)
 	        // This part will change if the mouse moves again
-	        var tmpPath = "";
+	        var tmpPath = '';
 	        lastPart = [];
 	        
 	        for (var offset = 2; offset < buffer.length; offset += 2) 
 	        {
 	            pt = getAveragePoint(offset);
-	            tmpPath += " L" + pt.x + " " + pt.y;
+	            tmpPath += ' L' + pt.x + ' ' + pt.y;
 	            lastPart.push(pt);
 	        }
 
 	        // Set the complete current path coordinates
-	        path.setAttribute("d", strPath + tmpPath);
+	        path.setAttribute('d', strPath + tmpPath);
 	    }
 	};
 };
