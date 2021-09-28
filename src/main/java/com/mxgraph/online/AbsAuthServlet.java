@@ -26,6 +26,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.google.appengine.api.memcache.MemcacheServiceException;
 import com.google.appengine.api.utils.SystemProperty;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -62,6 +63,9 @@ abstract public class AbsAuthServlet extends HttpServlet
 	
 	protected int postType = X_WWW_FORM_URLENCODED; 
 	protected String cookiePath = "/";
+	protected boolean withRedirectUrl = true;
+	protected boolean withRedirectUrlInRefresh = true;
+	protected boolean withAcceptJsonHeader = false;
 	
 	static public class Config 
 	{
@@ -118,7 +122,35 @@ abstract public class AbsAuthServlet extends HttpServlet
 	@SuppressWarnings("unchecked")
 	protected static void putCacheValue(String key, String val)
 	{
-		tokenCache.put(key, val);
+		int trials = 0;
+		boolean done = false;
+		
+		do
+		{
+			//Exponential? back-off
+			if (trials > 0)
+			{
+				try 
+				{
+					Thread.sleep(200 * trials);
+				}
+				catch (InterruptedException e) { }
+			}
+			
+			trials++;
+			
+			try
+			{
+				tokenCache.put(key, val);
+				done = true;
+			}
+			catch(MemcacheServiceException e)
+			{
+				//delay in re-trial is above
+				done = false;
+			}
+		}
+		while(!done && trials < 3);
 	}
 	
 	protected String getCookieValue(String name, HttpServletRequest request)
@@ -318,6 +350,7 @@ abstract public class AbsAuthServlet extends HttpServlet
 		catch (Exception e) 
 		{
 			response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+			log.log(Level.SEVERE, "AUTH-SERVLET: [" + request.getRemoteAddr()+ "] ERROR: " + e.getMessage());
 		}
 	}
 
@@ -328,7 +361,14 @@ abstract public class AbsAuthServlet extends HttpServlet
 
 	protected  int getExpiresIn(JsonObject json)
 	{
-		return json.get("expires_in").getAsInt();
+		try
+		{
+			return json.get("expires_in").getAsInt();
+		}
+		catch(Exception e)
+		{
+			return -1;
+		}
 	}
 	
 	protected  String getAccessToken(JsonObject json)
@@ -375,22 +415,37 @@ abstract public class AbsAuthServlet extends HttpServlet
 			if (postType == X_WWW_FORM_URLENCODED)
 			{
 				con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
+				
+				if (withAcceptJsonHeader)
+				{
+					con.setRequestProperty("Accept", "application/json");
+				}
+				
 				urlParameters.append("client_id=");
 				urlParameters.append(client);
-				urlParameters.append("&redirect_uri=");
-				urlParameters.append(redirectUri);
 				urlParameters.append("&client_secret=");
 				urlParameters.append(secret);
 			
 				if (code != null)
 				{
+					if (withRedirectUrl)
+					{
+						urlParameters.append("&redirect_uri=");
+						urlParameters.append(redirectUri);
+					}
+
 					urlParameters.append("&code=");
 					urlParameters.append(code);
 					urlParameters.append("&grant_type=authorization_code");
 				}
 				else
 				{
+					if (withRedirectUrlInRefresh)
+					{
+						urlParameters.append("&redirect_uri=");
+						urlParameters.append(redirectUri);
+					}
+					
 					urlParameters.append("&refresh_token=");
 					urlParameters.append(refreshToken);
 					urlParameters.append("&grant_type=refresh_token");
@@ -454,7 +509,11 @@ abstract public class AbsAuthServlet extends HttpServlet
 			
 			JsonObject respObj = new JsonObject();
 			respObj.addProperty("access_token", accessToken);
-			respObj.addProperty("expires_in", expiresIn);
+			
+			if (expiresIn > -1)
+			{
+				respObj.addProperty("expires_in", expiresIn);
+			}
 			
 			if (directResp)
 			{
@@ -507,6 +566,7 @@ abstract public class AbsAuthServlet extends HttpServlet
 				response.status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 				e.printStackTrace();
 				System.err.println(details);
+				log.log(Level.SEVERE, "AUTH-SERVLET: [" + authSrvUrl+ "] ERROR: " + e.getMessage() + " -> " + details.toString());
 			}
 			
 			if (DEBUG)

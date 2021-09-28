@@ -15,7 +15,7 @@ var mxSettings =
 	defaultFormatWidth: (screen.width < 600) ? '0' : '240',
 	
 	// NOTE: Hardcoded in index.html due to timing of JS loading
-	key: '.drawio-config',
+	key: Editor.settingsKey,
 
 	getLanguage: function()
 	{
@@ -31,7 +31,23 @@ var mxSettings =
 	},
 	setUi: function(ui)
 	{
-		mxSettings.settings.ui = ui;
+		// Writes to main configuration
+		var value = localStorage.getItem('.drawio-config');
+		
+		if (value == null)
+		{
+			value = mxSettings.getDefaults();
+		}
+		else
+		{
+			value = JSON.parse(value);
+		}
+		
+		value.ui = ui;
+		
+		delete value.isNew;
+		value.version = mxSettings.currentVersion;
+		localStorage.setItem('.drawio-config', JSON.stringify(value));
 	},
 	getShowStartScreen: function()
 	{
@@ -111,6 +127,12 @@ var mxSettings =
 	{
 		// Makes sure to update the latest data from the localStorage
 		mxSettings.load();
+		
+		//If the setting is incorrect, reset it to an empty array
+		if (!Array.isArray(mxSettings.settings.customLibraries))
+		{
+			mxSettings.settings.customLibraries = [];
+		}
 		
 		if (mxUtils.indexOf(mxSettings.settings.customLibraries, id) < 0)
 		{
@@ -194,10 +216,9 @@ var mxSettings =
 	{
 		mxSettings.settings.isRulerOn = value;
 	},
-	init: function()
+	getDefaults: function()
 	{
-		mxSettings.settings = 
-		{
+		return {
 			language: '',
 			configVersion: Editor.configVersion,
 			customFonts: [],
@@ -206,7 +227,7 @@ var mxSettings =
 			plugins: [],
 			recentColors: [],
 			formatWidth: mxSettings.defaultFormatWidth,
-			createTarget: false,
+			createTarget: urlParams['sketch'] == '1',
 			pageFormat: mxGraph.prototype.pageFormat,
 			search: true,
 			showStartScreen: true,
@@ -221,6 +242,10 @@ var mxSettings =
 			unit: mxConstants.POINTS,
 			isRulerOn: false
 		};
+	},
+	init: function()
+	{
+		mxSettings.settings = mxSettings.getDefaults();
 	},
 	save: function()
 	{

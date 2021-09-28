@@ -196,12 +196,13 @@ function render(data)
 			document.fonts.ready.then(function() 
 			{
 				var doneDiv = document.createElement("div");
+				var pageCount = diagrams != null? diagrams.length : 1;
 				doneDiv.id = 'LoadingComplete';
 				doneDiv.style.display = 'none';
 				doneDiv.setAttribute('bounds', JSON.stringify(bounds));
 				doneDiv.setAttribute('page-id', pageId);
 				doneDiv.setAttribute('scale', expScale);
-				doneDiv.setAttribute('pageCount', diagrams != null? diagrams.length : 1);
+				doneDiv.setAttribute('pageCount', pageCount);
 				document.body.appendChild(doneDiv);
 
 				//Electron pdf export
@@ -243,7 +244,7 @@ function render(data)
 						});
 						
 						//For some reason, Electron 9 doesn't send this object as is without stringifying. Usually when variable is external to function own scope
-						ipcRenderer.send('render-finished', {bounds: JSON.stringify(bounds)});
+						ipcRenderer.send('render-finished', {bounds: JSON.stringify(bounds), pageCount: pageCount});
 					}
 					catch(e)
 					{
@@ -397,6 +398,14 @@ function render(data)
 		}
 	};
 	
+	var origAddFont = Graph.addFont;
+	
+	Graph.addFont = function(name, url)
+	{
+		waitCounter++;
+		return origAddFont.call(this, name, url, decrementWaitCounter);	
+	};
+		
 	function renderPage()
 	{
 		// Enables math typesetting
@@ -420,7 +429,8 @@ function render(data)
 		if (bgImg != null)
 		{
 			bgImg = JSON.parse(bgImg);
-			graph.setBackgroundImage(new mxImage(bgImg.src, bgImg.width, bgImg.height));
+			graph.setBackgroundImage(new mxImage(bgImg.src, bgImg.width,
+				bgImg.height, bgImg.x, bgImg.y));
 		}
 		
 		// Parses XML into graph
@@ -690,7 +700,7 @@ function render(data)
 		// Gets the diagram bounds and sets the document size
 		bounds = (graph.pdfPageVisible) ? graph.view.getBackgroundPageBounds() : graph.getGraphBounds();
 		bounds.width = Math.ceil(bounds.width + data.border) + 1; //The 1 extra pixels to prevent cutting the cells on the edges when crop is enabled
-		bounds.height = Math.ceil(bounds.height + data.border);
+		bounds.height = Math.ceil(bounds.height + data.border) + 1; //The 1 extra pixels to prevent starting a new page. TODO Not working in every case
 		expScale = graph.view.scale || 1;
 		
 		// Converts the graph to a vertical sequence of pages for PDF export
@@ -709,8 +719,8 @@ function render(data)
 			// Applies print scale
 			pf = mxRectangle.fromRectangle(pf);
 			pf.width = Math.ceil(pf.width * printScale) + 1; //The 1 extra pixels to prevent cutting the cells on the right edge of the page
-			pf.height = Math.ceil(pf.height * printScale);
-			scale *= printScale;
+			pf.height = Math.ceil(pf.height * printScale) + 1; //The 1 extra pixels to prevent starting a new page. TODO Not working in every case
+			scale *= printScale;	
 			
 			// Starts at first visible page
 			if (!autoOrigin)
@@ -736,6 +746,7 @@ function render(data)
 				preview.autoOrigin = autoOrigin; 
 				preview.appendGraph(graph, scale, x0, y0);
 			}
+
 			// Adds shadow
 			// NOTE: Shadow rasterizes output
 			/*if (mxClient.IS_SVG && xmlDoc.documentElement.getAttribute('shadow') == '1')
@@ -759,6 +770,18 @@ function render(data)
 		}
 		else
 		{
+			var bgImg = graph.backgroundImage;
+
+			if (bgImg != null)
+			{
+				var t = graph.view.translate;
+				var s = graph.view.scale;
+
+				bounds.add(new mxRectangle(
+					(t.x + bgImg.x) * s, (t.y + bgImg.y) * s,
+					bgImg.width * s, bgImg.height * s));
+			}
+
 			// Adds shadow
 			// NOTE: PDF shadow rasterizes output so it's disabled
 			if (data.format != 'pdf' && mxClient.IS_SVG && xmlDoc.documentElement.getAttribute('shadow') == '1')
@@ -772,7 +795,7 @@ function render(data)
 			document.body.style.width = Math.ceil(bounds.x + bounds.width) + 'px';
 			document.body.style.height = Math.ceil(bounds.y + bounds.height) + 'px';
 		}
-	}
+	};
 	
 	if (diagrams != null && diagrams.length > 0)
 	{

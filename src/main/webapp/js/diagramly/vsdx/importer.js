@@ -45,6 +45,7 @@ var com;
                     this.debugPaths = false;
                     this.vsdxModel = null;
                     this.editorUi = editorUi;
+					this.shapeIndexShift = 0;
                 }
                 mxVsdxCodec.vsdxPlaceholder_$LI$ = function ()
                 {
@@ -59,24 +60,26 @@ var com;
                 
                 mxVsdxCodec.parsererrorNS_$LI$ = function ()
                 {
-            		if (mxVsdxCodec.parsererrorNS == null)
-            		{
-            			mxVsdxCodec.parsererrorNS = "";
-            			
-            			if (window.DOMParser) 
-            			{
-	            			var parser = new DOMParser();
-	            			
-	            			try
-	            			{
-	            				mxVsdxCodec.parsererrorNS = parser.parseFromString('<', 'text/xml').getElementsByTagName("parsererror")[0].namespaceURI;
-	            			}
-	            			catch(e)
-	            			{
-	            				//ignore! IE11 throw an exception on XML syntax error
-	            			}
-            			}
-        			}
+					mxVsdxCodec.parsererrorNS = mxConstants.NS_XHTML;
+	
+//            		if (mxVsdxCodec.parsererrorNS == null)
+//            		{
+//            			mxVsdxCodec.parsererrorNS = "";
+//            			
+//            			if (window.DOMParser) 
+//            			{
+//	            			var parser = new DOMParser();
+//	            			
+//	            			try
+//	            			{
+//	            				mxVsdxCodec.parsererrorNS = parser.parseFromString('<', 'text/xml').getElementsByTagName("parsererror")[0].namespaceURI;
+//	            			}
+//	            			catch(e)
+//	            			{
+//	            				//ignore! IE11 throw an exception on XML syntax error
+//	            			}
+//            			}
+//        			}
 
             		return mxVsdxCodec.parsererrorNS;
                 };
@@ -153,8 +156,8 @@ var com;
                 
                 mxVsdxCodec.incorrectXMLReqExp = [
                 	{
-                		regExp: /(\>[^&<]*)\&([^&<;]*\<)/g,
-                		repl: '$1&amp;$2'
+                		regExp: /\&(?!amp;|lt;|gt;|quot;|#)/g,
+                		repl: '&amp;'
                 	}
                 ];
                 
@@ -274,7 +277,7 @@ var com;
 		                    		
 		                    		if (onerror != null) 
 		                    		{
-		                    			onerror();
+		                    			onerror(e);
 		                    		}
 		                    		else
 		                    		{
@@ -904,6 +907,21 @@ var com;
                             	graph.setLinkForCell(v1, 'data:page/id,' + lnkObj.pageLink);
                         	}
                             
+							// Add Shape properties
+							var props = shape.getProperties();
+							
+							for (var i = 0; i < props.length; i++)
+							{
+								try
+								{
+									graph.setAttributeForCell(v1, props[i].key, props[i].val);	
+								}
+								catch(e)
+								{
+									console.log('Attribute: "', props[i].key, '" with value "', props[i].val, '" not allowed in HTML');
+								}
+							}
+							
                             return v1;
                         }
                         else {
@@ -1134,7 +1152,35 @@ var com;
                     return new mxPoint(x, y);
                 }
                 
-
+				mxVsdxCodec.prototype.processEdgeGeo = function (edgeShape, edge) 
+				{
+					//Detect Line jumps (best effots)
+					try
+					{
+						var rows = edgeShape.geomList.geomList[0].rows;
+						
+						for (var i = 0; i < rows.length; i++)
+						{
+							if (rows[i] instanceof com.mxgraph.io.vsdx.geometry.ArcTo)
+							{
+								edge.style += 'jumpStyle=arc;';
+								break;
+							}
+						}
+						
+						//Handle NURBS
+						for (var i = 0; i < rows.length; i++)
+						{
+							if (rows[i] instanceof com.mxgraph.io.vsdx.geometry.NURBSTo)
+							{
+								//TODO HAndle NURBS points (convert to curved edge with these points)
+								//var str = rows[i].handle({}, edgeShape);
+							}
+						}
+					}
+					catch(e){} //Ignore
+				};
+				
                 /**
                  * Adds a connected edge to the graph.
                  * These edged are the referenced in one Connect element at least.
@@ -1180,7 +1226,8 @@ var com;
                         } return null; })(this.vertexMap, new com.mxgraph.io.vsdx.ShapePageId(pageId, sourceSheet)) : null;
                     
                     var removeFirstPt = true;
-                    if (source == null) 
+					//Treat source with zero height/width as null since constraint calc will be invalid
+                    if (source == null || source.geometry.width == 0 || source.geometry.height == 0) 
                     {
                         source = graph.insertVertex(parent, null, null, Math.floor(Math.round(beginXY.x * 100) / 100), Math.floor(Math.round(beginXY.y * 100) / 100), 0, 0);
                     }
@@ -1210,7 +1257,8 @@ var com;
                         } return null; })(this.vertexMap, new com.mxgraph.io.vsdx.ShapePageId(pageId, toSheet)) : null;
                     
                     var removeLastPt = true;
-                    if (target == null) 
+					//Treat target with zero height/width as null since constraint calc will be invalid
+                    if (target == null || target.geometry.width == 0 || target.geometry.height == 0) 
                     {
                         target = graph.insertVertex(parent, null, null, Math.floor(Math.round(endXY.x * 100) / 100), Math.floor(Math.round(endXY.y * 100) / 100), 0, 0);
                     }
@@ -1317,6 +1365,9 @@ var com;
                         var pointList = edgeShape.getControlPoints(parentHeight);
                         edgeGeometry.points = (pointList);
                     }
+
+					this.processEdgeGeo(edgeShape, edge) ;
+
                     return edgeId;
                 };
                 /**
@@ -1347,7 +1398,7 @@ var com;
                         }
                         else {
                             edge = graph.createEdge(parent, null, null, null, null, com.mxgraph.io.vsdx.mxVsdxUtils.getStyleString(styleMap, "="));
-                            edge = graph.addEdge(edge, parent, null, null, edgeShape.getShapeIndex());
+                            edge = graph.addEdge(edge, parent, null, null, edgeShape.getShapeIndex() + this.shapeIndexShift++);
                         }
                         var label = edgeShape.createLabelSubShape(graph, edge);
                         if (label != null) {
@@ -1365,7 +1416,7 @@ var com;
                         }
                         else {
                             edge = graph.createEdge(parent, null, edgeShape.getTextLabel(), null, null, com.mxgraph.io.vsdx.mxVsdxUtils.getStyleString(styleMap, "="));
-                            edge = graph.addEdge(edge, parent, null, null, edgeShape.getShapeIndex());
+                            edge = graph.addEdge(edge, parent, null, null, edgeShape.getShapeIndex() + this.shapeIndexShift++);
                         }
                         var lblOffset = edgeShape.getLblEdgeOffset(graph.getView(), points);
                         edge.getGeometry().offset = (lblOffset);
@@ -1388,6 +1439,9 @@ var com;
                         var pointList = edgeShape.getControlPoints(parentHeight);
                         edgeGeometry.points = (pointList);
                     }
+
+					this.processEdgeGeo(edgeShape, edge) ;
+
                     return edge;
                 };
                 mxVsdxCodec.prototype.rotateChildEdge = function (model, parent, beginXY, endXY, points) {
@@ -2817,6 +2871,17 @@ var com;
                             this.closePath(parsedGeom, lastGeoStyle);
                         }
                         /* append */ (function (sb) { return sb.str = sb.str.concat("</foreground></shape>"); })(parsedGeom);
+						
+						//If the geomertry has no move, it will cause errors in SVG. So, ignore this shape 
+						//A path with no move in the beginning is invalid
+						//https://www.w3.org/TR/SVG11/paths.html#PathDataMovetoCommands
+						//https://stackoverflow.com/questions/56275231/do-all-svg-paths-have-to-start-with-a-move
+						//TODO Find a faster technique, then enable this
+						/*if (parsedGeom.str.indexOf('<move') < 0)
+						{
+							return '';
+						}*/
+						
                         return parsedGeom.str;
                     };
                     /*private*/ mxVsdxGeometryList.prototype.processGeo = function (shape, p, parsedGeom, lastGeoStyle, withFill) {
@@ -10677,6 +10742,39 @@ var com;
 
                     	return {extLink: extLink, pageLink: pageLink};
                     };
+
+                    VsdxShape.prototype.getProperties = function () 
+                    {
+						var props = [];
+
+                    	if (this.sections && this.sections['Property'])
+                    	{
+	                    	var rows = com.mxgraph.io.vsdx.mxVsdxUtils.getDirectChildNamedElements(this.sections['Property'].elem, "Row");
+
+	                    	for (var i = 0; i < rows.length; i++)
+	                    	{
+			                    var row = rows[i];
+                            	var n = row.getAttribute("N");
+                            	
+								var cells = com.mxgraph.io.vsdx.mxVsdxUtils.getDirectChildElements(row);
+
+                        		for (var j = 0; j < cells.length; j++)
+                    			{
+                            		var cell = cells[j];
+									var cn = cell.getAttribute("N");
+                        			 
+                        			if (cn == 'Value')
+                        			{
+                            			props.push({key: n, val: cell.getAttribute("V")});
+                            			break;
+                        			}
+                        		}
+		                    }
+                    	}
+
+						return props;
+                    };
+
                     /**
                      * Analyzes the shape and returns a string with the style.
                      * @return {*} style read from the shape.

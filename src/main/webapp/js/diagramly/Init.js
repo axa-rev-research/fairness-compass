@@ -1,6 +1,6 @@
 /**
- * Copyright (c) 2006-2020, JGraph Ltd
- * Copyright (c) 2006-2020, draw.io AG
+ * Copyright (c) 2006-2021, JGraph Ltd
+ * Copyright (c) 2006-2021, draw.io AG
  */
 
 // urlParams is null when used for embedding
@@ -13,8 +13,7 @@ window.isLocalStorage = window.isLocalStorage || false;
 window.mxLoadSettings = window.mxLoadSettings || urlParams['configure'] != '1';
 
 // Checks for SVG support
-window.isSvgBrowser = window.isSvgBrowser || navigator.userAgent == null ||
-	navigator.userAgent.indexOf('MSIE') < 0 || document.documentMode >= 9;
+window.isSvgBrowser = true;
 
 // CUSTOM_PARAMETERS - URLs for save and export
 window.DRAWIO_BASE_URL = window.DRAWIO_BASE_URL || ((/.*\.draw\.io$/.test(window.location.hostname)) || (/.*\.diagrams\.net$/.test(window.location.hostname)) ?
@@ -27,11 +26,16 @@ window.VSD_CONVERT_URL = window.VSD_CONVERT_URL || 'https://convert.diagrams.net
 window.EMF_CONVERT_URL = window.EMF_CONVERT_URL || 'https://convert.diagrams.net/emf2png/convertEMF';
 window.REALTIME_URL = window.REALTIME_URL || 'cache';
 window.DRAWIO_GITLAB_URL = window.DRAWIO_GITLAB_URL || 'https://gitlab.com';
-window.DRAWIO_GITLAB_ID = window.DRAWIO_GITLAB_ID || '5cdc018a32acddf6eba37592d9374945241e644b8368af847422d74c8709bc44';
+window.DRAWIO_GITLAB_ID = window.DRAWIO_GITLAB_ID || 'c9b9d3fcdce2dec7abe3ab21ad8123d89ac272abb7d0883f08923043e80f3e36';
+window.DRAWIO_GITHUB_URL = window.DRAWIO_GITHUB_URL || 'https://github.com';
+window.DRAWIO_GITHUB_API_URL = window.DRAWIO_GITHUB_API_URL || 'https://api.github.com';
+window.DRAWIO_GITHUB_ID = window.DRAWIO_GITHUB_ID || '4f88e2ec436d76c2ee6e';
+window.DRAWIO_DROPBOX_ID = window.DRAWIO_DROPBOX_ID || 'libwls2fa9szdji';
 window.SAVE_URL = window.SAVE_URL || 'save';
 window.OPEN_URL = window.OPEN_URL || 'import';
 window.PROXY_URL = window.PROXY_URL || 'proxy';
 window.DRAWIO_VIEWER_URL = window.DRAWIO_VIEWER_URL || null;
+window.NOTIFICATIONS_URL = window.NOTIFICATIONS_URL || 'https://www.draw.io/notifications';
 
 // Paths and files
 window.SHAPES_PATH = window.SHAPES_PATH || 'shapes';
@@ -79,7 +83,7 @@ window.mxLanguage = window.mxLanguage || (function()
 				
 				if (!lang && window.mxIsElectron)
 				{
-					lang = require('electron').remote.app.getLocale();
+					lang = require('@electron/remote').app.getLocale();
 					
 					if (lang != null)
 			    	{
@@ -144,6 +148,7 @@ window.mxLanguageMap = window.mxLanguageMap ||
 	'uk' : 'Українська',
 	'he' : 'עברית',
 	'ar' : 'العربية',
+	'fa' : 'فارسی',
 	'th' : 'ไทย',
 	'ko' : '한국어',
 	'ja' : '日本語',
@@ -186,7 +191,7 @@ if (urlParams['lightbox'] == '1')
 }
 
 /**
- * Returns the global UI setting before runngin static draw.io code
+ * Returns the global UI setting before running static draw.io code
  */
 window.uiTheme = window.uiTheme || (function() 
 {
@@ -212,6 +217,12 @@ window.uiTheme = window.uiTheme || (function()
 		}
 	}
 	
+	//Use Sketch theme for MS Teams (and any future extAuth) by default
+	if (ui == null && urlParams['extAuth'] == '1')
+	{
+		ui = 'sketch';
+	}
+	
 	// Uses minimal theme on small screens
 	try
 	{
@@ -221,7 +232,12 @@ window.uiTheme = window.uiTheme || (function()
 
 	        if (iw <= 768)
 	        {
-	        	ui = 'min';
+				if (urlParams['pages'] == null)
+				{
+					urlParams['pages'] = '1';
+				}
+
+				ui = 'sketch';
 	        }
 		}
 	}
@@ -229,7 +245,14 @@ window.uiTheme = window.uiTheme || (function()
 	{
 		// ignore
 	}
-	
+
+	// Redirects sketch UI to min UI with sketch URL parameter
+	if (ui == 'sketch')
+	{
+		urlParams['sketch'] = '1';
+		ui = 'min';
+	}
+		
 	return ui;
 })();
 
@@ -347,7 +370,8 @@ function setCurrentXml(data, filename)
 })();
 
 // Enables offline mode
-if (urlParams['offline'] == '1' || urlParams['demo'] == '1' || urlParams['stealth'] == '1' || urlParams['local'] == '1')
+if (urlParams['offline'] == '1' || urlParams['demo'] == '1' || 
+		urlParams['stealth'] == '1' || urlParams['local'] == '1' || urlParams['lockdown'] == '1')
 {
 	urlParams['picker'] = '0';
 	urlParams['gapi'] = '0';
@@ -357,6 +381,22 @@ if (urlParams['offline'] == '1' || urlParams['demo'] == '1' || urlParams['stealt
 	urlParams['gl'] = '0';
 	urlParams['tr'] = '0';
 }
+// Do not insert code between above and below blocks
+// se mode. Ensure this comes after the block above. 
+if (window.location.hostname == 'se.diagrams.net')
+{
+	urlParams['db'] = '0';
+	urlParams['od'] = '0';
+	urlParams['gh'] = '0';
+	urlParams['gl'] = '0';
+	urlParams['tr'] = '0';
+	urlParams['plugins'] = '0';
+	urlParams['mode'] = 'google';
+	urlParams['lockdown'] = '1'; // Do not want to apply lockdown true to above block
+
+	window.DRAWIO_GOOGLE_APP_ID = window.DRAWIO_GOOGLE_APP_ID || '184079235871';
+	window.DRAWIO_GOOGLE_CLIENT_ID = window.DRAWIO_GOOGLE_CLIENT_ID || '184079235871-pjf5nn0lff27lk8qf0770gmffiv9gt61.apps.googleusercontent.com';
+}
 
 // Disables Trello client by default
 if (urlParams['mode'] == 'trello')
@@ -364,17 +404,18 @@ if (urlParams['mode'] == 'trello')
 	urlParams['tr'] = '1';
 }
 
-// Disables math in offline mode
-if (urlParams['offline'] == '1' || urlParams['local'] == '1')
-{
-	urlParams['math'] = '0';
-}
-
 // Uses embed mode on embed domain
 if (window.location.hostname == 'embed.diagrams.net')
 {
 	urlParams['embed'] = '1';
-}	
+}
+
+//Disable Google Drive when running in a WebView (e.g, MS Teams App) Since auth doesn't work with disallowd_useragent
+if (/((iPhone|iPod|iPad).*AppleWebKit(?!.*Version)|; wv)/i.test(navigator.userAgent))
+{
+	urlParams['gapi'] = '0';
+	urlParams['noDevice'] = '1';
+}
 
 // Fallback for cases where the hash property is not available
 if ((window.location.hash == null || window.location.hash.length <= 1) &&
