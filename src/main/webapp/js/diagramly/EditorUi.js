@@ -8956,7 +8956,7 @@
 		mxStencilRegistry.allowEval = mxStencilRegistry.allowEval && !this.isOfflineApp();
 
 		// Must be set before UI is created in superclass
-		if (typeof window.mxSettings !== 'undefined')
+		if (this.isSettingsEnabled())
 		{
 			if (urlParams['sketch'] == '1')
 			{
@@ -9570,7 +9570,7 @@
 		}
 		
 		// Adding mxRuler to editor
-		if (typeof window.mxSettings !== 'undefined')
+		if (this.isSettingsEnabled())
 		{
 			var view = this.editor.graph.view;
 			view.setUnit(mxSettings.getUnit());
@@ -10133,7 +10133,24 @@
 			}), 0);
 		}
 	};
-  
+
+	/**
+	 * Changes Editor.pagesVisible.
+	 */
+	EditorUi.prototype.setPagesVisible = function(value)
+	{
+		if (Editor.pagesVisible != value)
+		{
+			Editor.pagesVisible = value;
+
+			// Persist setting
+			mxSettings.settings.pagesVisible = value;
+			mxSettings.save();
+
+			this.fireEvent(new mxEventObject('pagesVisibleChanged'));
+		}
+	};
+   
 	/**
 	 * Dynamic change of dark mode.
 	 */
@@ -10141,20 +10158,24 @@
 	{
 		if (Editor.sketchMode != value)
 		{
-			this.menus.defaultFonts = Menus.prototype.defaultFonts;
 			var graph = this.editor.graph;
 			Editor.sketchMode = value;
+
+			this.menus.defaultFonts = Menus.prototype.defaultFonts;
+			this.menus.defaultFontSize = 20;
+			graph.defaultVertexStyle = {'pointerEvents': '0', 'fontSize': '20'};
+			graph.defaultEdgeStyle = {'fontSize': '16', 'edgeStyle': 'none', 'rounded': '0',
+				'curved': '1', 'jettySize': 'auto', 'orthogonalLoop': '1', 'endArrow': 'open',
+				'endSize': '14', 'startSize': '14'};
 
 			if (value)
 			{
 				graph.defaultVertexStyle['fontFamily'] = Editor.sketchFontFamily;
 				graph.defaultVertexStyle['fontSource'] = Editor.sketchFontSource;
-				graph.defaultVertexStyle['fontSize'] = '18';
 				graph.defaultVertexStyle['hachureGap'] = '4';
 				graph.defaultVertexStyle['sketch'] = '1';
 				graph.defaultEdgeStyle['fontFamily'] = Editor.sketchFontFamily;
 				graph.defaultEdgeStyle['fontSource'] = Editor.sketchFontSource;
-				graph.defaultEdgeStyle['fontSize'] = '18';
 				graph.defaultEdgeStyle['sketch'] = '1';
 				graph.defaultEdgeStyle['hachureGap'] = '4';
 				graph.defaultEdgeStyle['sourcePerimeterSpacing'] = '8';
@@ -10166,17 +10187,14 @@
 					{'fontFamily': 'Permanent Marker', 'fontUrl': 'https://fonts.googleapis.com/css?family=Permanent+Marker'}].
 					concat(this.menus.defaultFonts);
 			}
-			else
-			{
-				graph.defaultVertexStyle = {'pointerEvents': '0'};
-				graph.defaultEdgeStyle = {'edgeStyle': 'none', 'rounded': '0', 'curved': '1', 'jettySize': 'auto',
-					'orthogonalLoop': '1', 'endSize': '14', 'startSize': '14', 'endArrow': 'open'};
-			}
 
-			Graph.prototype.defaultVertexStyle = graph.defaultVertexStyle;
-			Graph.prototype.defaultEdgeStyle = graph.defaultEdgeStyle;
 			this.initialDefaultVertexStyle = mxUtils.clone(graph.defaultVertexStyle);
 			this.initialDefaultEdgeStyle = mxUtils.clone(graph.defaultEdgeStyle);
+			graph.currentVertexStyle = mxUtils.clone(graph.defaultVertexStyle);
+			graph.currentEdgeStyle = mxUtils.clone(graph.defaultEdgeStyle);
+			Graph.prototype.defaultVertexStyle = graph.defaultVertexStyle;
+			Graph.prototype.defaultEdgeStyle = graph.defaultEdgeStyle;
+
 			this.clearDefaultStyle();
 		}
 	};
@@ -10255,6 +10273,9 @@
 	{
 		if (this.isSettingsEnabled())
 		{
+			// Sets global switch for sketch mode
+			Editor.pagesVisible = mxSettings.settings.pagesVisible;
+
 			// Gets recent colors from settings
 			ColorDialog.recentColors = mxSettings.getRecentColors();
 
