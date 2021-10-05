@@ -1,8 +1,8 @@
-<p align="center"><img src="fairness_compass_logo_small.png"></p>
+<p align="center"><a ref="https://axa-rev-research.github.io/fairness-compass.html"><img src="fairness_compass_logo_small.png"/></a></p>
 
 About
 -----
-The **Fairness Compass** is a fairness metric selection tool for AI applications. It leverages the online diagramming software [diagrams.net](https://app.diagrams.net).
+The Fairness Compass is a fairness metric selection tool for AI applications. It leverages the online diagramming software [diagrams.net](https://app.diagrams.net).
 
 Usage
 -----
