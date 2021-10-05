@@ -1,4 +1,6 @@
-<p align="center"><a ref="https://axa-rev-research.github.io/fairness-compass.html"><img src="fairness_compass_logo_small.png"/></a></p>
+<a ref="https://axa-rev-research.github.io/fairness-compass.html"><img src="fairness_compass_logo_small.png"/></a>
+[<fairness_compass_logo_small.png">](https://axa-rev-research.github.io/fairness-compass.html)
+
 
 About
 -----
