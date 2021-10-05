@@ -1,4 +1,5 @@
-![Fairness Compass](fairness_compass_logo_small.png)
+
+<p align="center">![Fairness Compass](fairness_compass_logo_small.png)</p>
 
 About
 -----
