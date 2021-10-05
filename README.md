@@ -1,8 +1,8 @@
-<p align="center"><img src="fairness_compass_logo_small.png"/></p>
+<p align="center"><img src="fairness_compass_logo_small.png"></p>
 
 About
 -----
-The Fairness Compass is a fairness metric selection tool for AI applications. It leverages the online diagramming software [diagrams.net](https://app.diagrams.net).
+The **Fairness Compass** is a fairness metric selection tool for AI applications. It leverages the online diagramming software [diagrams.net](https://app.diagrams.net).
 
 Usage
 -----
@@ -13,7 +13,7 @@ Detailed documentation in [English](https://axa-rev-research.github.io/static/AX
 
 Development
 -----------
-This repository is a fork of [diagrams.net](https://github.com/jgraph/drawio). We extended the plugin [props.js](src/main/webapp/plugins/props.js) and developed the schema of the decision tree which is encoded as parameter in url. To modify the tree, simply switch to chrome mode (`chrome=1`) and export the new diagram as URL when done.
+This repository is a fork of [diagrams.net](https://github.com/jgraph/drawio). We extended the plugin [props.js](src/main/webapp/plugins/props.js) and developed the schema of the decision tree which is encoded as url parameter. To modify the tree, simply switch to chrome mode (`chrome=1`) and export the new diagram as URL when done.
 
 License
 -------
