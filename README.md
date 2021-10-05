@@ -1,4 +1,4 @@
-[![Fairness Compass](fairness_compass_logo_small.png)]
+[Fairness Compass](fairness_compass_logo_small.png)
 
 About
 -----
@@ -13,7 +13,7 @@ Detailed documentation in [English](https://axa-rev-research.github.io/static/AX
 
 Development
 -----------
-This repository is a fork of [diagrams.net](https://app.diagrams.net). We extended the plugin (props.js)[/src/main/webapp/plugins/props.js] and developed the schema of the decision tree which is encoded as parameter in url. To modify the tree, simply switch to chrome mode (`chrome=1`) and export the new diagram as URL when done.
+This repository is a fork of [diagrams.net](https://app.diagrams.net). We extended the plugin (props.js)[src/main/webapp/plugins/props.js] and developed the schema of the decision tree which is encoded as parameter in url. To modify the tree, simply switch to chrome mode (`chrome=1`) and export the new diagram as URL when done.
 
 License
 -------
