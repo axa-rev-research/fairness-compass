@@ -1,8 +1,4 @@
-<a ref="https://axa-rev-research.github.io/fairness-compass.html"><img src="fairness_compass_logo_small.png"/></a>
-
-
 [![Fairness Compass](fairness_compass_logo_small.png)](https://axa-rev-research.github.io/fairness-compass.html)
-
 
 About
 -----
