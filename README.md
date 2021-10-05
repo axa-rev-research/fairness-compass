@@ -6,7 +6,7 @@ The Fairness Compass is a fairness metric selection tool for AI applications. It
 
 Usage
 -----
-Biased AI can have a negative impact on society. Fortunately, plenty of mitigation methods have been proposed to counter this effect. However, since there is no universal definition of fairness, and many notions are in conflict with each other, choosing the right fairness objective is essential for success. The Fairness Compass makes this task an operational and transparent process.
+Biased AI can have a negative impact on society. Fortunately, plenty of mitigation methods have been proposed to counter this effect. However, since there is no universal definition of fairness, and many notions are in conflict with each other, choosing the right fairness objective is essential for successful implementation of fair AI. The Fairness Compass makes this task an operational and transparent process.
 
 Online tool: [https://axa-rev-research.github.io/fairness-compass.html](https://axa-rev-research.github.io/fairness-compass.html)
 
