@@ -12,6 +12,7 @@ Online tool: [https://axa-rev-research.github.io/fairness-compass.html](https://
 
 Detailed documentation in [English](https://axa-rev-research.github.io/static/AXA_FairnessCompass-English.pdf) and [German](https://axa-rev-research.github.io/static/AXA_FairnessCompass-Deutsch.pdf).
 
+[![Fairness Compass Decision Tree](AXA_Fairness_Compass_Decision_Tree.png)](https://axa-rev-research.github.io/fairness-compass.html)
 
 Development
 -----------
