@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8"/>
+<link rel="stylesheet" href="css/easygrid.css">
+<link href="css/bootstrap.min.css" rel="stylesheet">
+
+<head>
+  <title>Fairness Library</title>
+</head>
+
+<script src="js/jquery.min.js"></script>
+<script src="js/easygrid.js"></script>
+<script src="js/showMore.min.js"></script>
+<script src="js/jsrender.min.js"></script>
+
+<script>
+// List entries 
+var data = [
+  {
+    "title": "Optimized Pre-Processing for Discrimination Prevention",
+    "authors": "F. Calmon, D. Wei, B. Vinzamuri, K. N. Ramamurthy and K. R. Varshney",
+    "abstract": "Non-discrimination is a recognized objective in algorithmic decision making. In this paper, we introduce a novel probabilistic formulation of data pre-processing for reducing discrimination. We propose a convex optimization for learning a data transformation with three goals: controlling discrimination, limiting distortion in individual data samples, and preserving utility. We characterize the impact of limited sample size in accomplishing this objective, and apply two instances of the proposed optimization to datasets, including one on real-world criminal recidivism. The results demonstrate that all three criteria can be simultaneously achieved and also reveal interesting patterns of bias in American society.",
+    "metrics": ["demographic-parity"],
+    "conference": "Conference on Neural Information Processing Systems (NIPS)",
+    "year": 2017,
+    "paper_url": "https://papers.nips.cc/paper/2017/hash/9a49a25d845a483fae4be7e341368e36-Abstract.html",
+    "code_url": "https://github.com/fair-preprocessing/nips2017"  
+  },
+  {
+    "title": "Fair Adversarial Gradient Tree Boosting",
+    "authors": "V. Grari, B. Ruf, S. Lamprier and M. Detyniecki",
+    "abstract": "Fair classification has become an important topic in machine learning research. While most bias mitigation strategies focus on neural networks, we noticed a lack of work on fair classifiers based on decision trees even though they have proven very efficient. In an up-to-date comparison of state-of-the-art classification algorithms in tabular data, tree boosting outperforms deep learning. For this reason, we have developed a novel approach of adversarial gradient tree boosting. The objective of the algorithm is to predict the output Y with gradient tree boosting while minimizing the ability of an adversarial neural network to predict the sensitive attribute S. The approach incorporates at each iteration the gradient of the neural network directly in the gradient tree boosting. We empirically assess our approach on 4 popular data sets and compare against state-of-the-art algorithms. The results show that our algorithm achieves a higher accuracy while obtaining the same level of fairness, as measured using a set of different common fairness definitions.",
+    "metrics": ["demographic-parity", "equalized-odds"],
+    "conference": "IEEE International Conference on Data Mining (ICDM)",
+    "year": 2019,
+    "paper_url": "https://arxiv.org/abs/1911.05369",
+    "code_url": "https://github.com/vincent-grari/FAGTB"
+  },
+  {
+    "title": "A Reductions Approach to Fair Classification",
+    "authors": "A. Agarwal, A. Beygelzimer, M. Dudík, J. Langford and H. Wallach",
+    "abstract": "We present a systematic approach for achieving fairness in a binary classification setting. While we focus on two well-known quantitative definitions of fairness, our approach encompasses many other previously studied definitions as special cases. The key idea is to reduce fair classification to a sequence of cost-sensitive classification problems, whose solutions yield a randomized classifier with the lowest (empirical) error subject to the desired constraints. We introduce two reductions that work for any representation of the cost-sensitive classifier and compare favorably to prior baselines on a variety of data sets, while overcoming several of their disadvantages.",
+    "metrics": ["demographic-parity", "equalized-odds"],
+    "conference": "International Conference on Machine Learning (ICML)",
+    "year": 2018,
+    "paper_url": "https://icml.cc/Conferences/2018/ScheduleMultitrack?event=3075",
+    "code_url": "https://fairlearn.org/main/api_reference/fairlearn.reductions.html#fairlearn.reductions.GridSearch"
+  },
+  {
+    "title": "Equality of Opportunity in Supervised Learning",
+    "authors": "M. Hardt, E. Price, and N. Srebro",
+    "abstract": "We propose a criterion for discrimination against a specified sensitive attribute in supervised learning, where the goal is to predict some target based on available features. Assuming data about the predictor, target, and membership in the protected group are available, we show how to optimally adjust any learned predictor so as to remove discrimination according to our definition. Our framework also improves incentives by shifting the cost of poor classification from disadvantaged groups to the decision maker, who can respond by improving the classification accuracy. In line with other studies, our notion is oblivious: it depends only on the joint statistics of the predictor, the target and the protected attribute, but not on interpretation of individualfeatures. We study the inherent limits of defining and identifying biases based on such oblivious measures, outlining what can and cannot be inferred from different oblivious tests. We illustrate our notion using a case study of FICO credit scores.",
+    "metrics": ["equalized-odds", "equalized-opportunities"],
+    "conference": "Conference on Neural Information Processing Systems (NIPS)",
+    "year": 2016,
+    "paper_url": "https://arxiv.org/abs/1610.02413",
+    "code_url": "https://github.com/gpleiss/equalized_odds_and_calibration"
+  },
+  {
+    "title": "On Fairness and Calibration",
+    "authors": "G. Pleiss, M. Raghavan, F. Wu, J. Kleinberg, and K. Q. Weinberger",
+    "abstract": "The machine learning community has become increasingly concerned with the potential for bias and discrimination in predictive models. This has motivated a growing line of work on what it means for a classification procedure to be \"fair.\" In this paper, we investigate the tension between minimizing error disparity across different population groups while maintaining calibrated probability estimates. We show that calibration is compatible only with a single error constraint (i.e. equal false-negatives rates across groups), and show that any algorithm that satisfies this relaxation is no better than randomizing a percentage of predictions for an existing classifier. These unsettling findings, which extend and generalize existing results, are empirically confirmed on several datasets.",
+    "metrics": ["equalized-odds"],
+    "conference": "Conference on Neural Information Processing Systems (NIPS)",
+    "year": 2017,
+    "paper_url": "https://papers.nips.cc/paper/2017/hash/b8b9c74ac526fffbeb2d39ab038d1cd7-Abstract.html",
+    "code_url": "https://github.com/gpleiss/equalized_odds_and_calibration"
+  },
+  {
+    "title": "Mitigating Unwanted Biases with Adversarial Learning",
+    "authors": "B. H. Zhang, B. Lemoine, and M. Mitchell",
+    "abstract": "Machine learning is a tool for building models that accurately represent input training data. When undesired biases concerning demographic groups are in the training data, well-trained models will reflect those biases. We present a framework for mitigating such biases by including a variable for the group of interest and simultaneously learning a predictor and an adversary. The input to the network X, here text or census data, produces a prediction Y, such as an analogy completion or income bracket, while the adversary tries to model a protected variable Z, here gender or zip code. The objective is to maximize the predictor's ability to predict Y while minimizing the adversary's ability to predict Z. Applied to analogy completion, this method results in accurate predictions that exhibit less evidence of stereotyping Z. When applied to a classification task using the UCI Adult (Census) Dataset, it results in a predictive model that does not lose much accuracy while achieving very close to equality of odds (Hardt, et al., 2016). The method is flexible and applicable to multiple definitions of fairness as well as a wide range of gradient-based learning models, including both regression and classification tasks.",
+    "metrics": ["demographic-parity","equalized-odds", "equalized-opportunities"],
+    "conference": "AAAI/ACM Conference on Artificial Intelligence, Ethics, and Society (AIES)",
+    "year": 2018,
+    "paper_url": "https://arxiv.org/abs/1801.07593",
+    "code_url": "https://colab.research.google.com/notebooks/ml_fairness/adversarial_debiasing.ipynb"
+  },
+  {
+    "title": "Learning Fair Representations",
+    "authors": "R. Zemel, Y. Wu, K. Swersky, T. Pitassi and C. Dwork",
+    "abstract": "We propose a learning algorithm for fair classification that achieves both group fairness (the proportion of members in a protected group receiving positive classification is identical to the proportion in the population as a whole), and individual fairness (similar individuals should be treated similarly). We formulate fairness as an optimization problem of finding a good representation of the data with two competing goals: to encode the data as well as possible, while simultaneously obfuscating any information about membership in the protected group. We show positive results of our algorithm relative to other known techniques, on three datasets. Moreover, we demonstrate several advantages to our approach. First, our intermediate representation can be used for other classification tasks (i.e., transfer learning is possible); secondly, we take a step toward learning a distance metric which can find important dimensions of the data for classification.",
+    "metrics": ["demographic-parity"],
+    "conference": "International Conference on Machine Learning (ICML)",
+    "year": 2013,
+    "paper_url": "http://proceedings.mlr.press/v28/zemel13.html",
+    "code_url": "https://github.com/zjelveh/learning-fair-representations"
+  },
+  {
+    "title": "Fairness-Aware Classifier with Prejudice Remover Regularizer",
+    "authors": "T. Kamishima, S. Akaho, H. Asoh and J. Sakuma",
+    "abstract": "With the spread of data mining technologies and the accumulation of social data, such technologies and data are being used for determinations that seriously affect individuals’ lives. For example, credit scoring is frequently determined based on the records of past credit data together with statistical prediction techniques. Needless to say, such determinations must be nondiscriminatory and fair in sensitive features, such as race, gender, religion, and so on. Several researchers have recently begun to attempt the development of analysis techniques that are aware of social fairness or discrimination. They have shown that simply avoiding the use of sensitive features is insufficient for eliminating biases in determinations, due to the indirect influence of sensitive information. In this paper, we first discuss three causes of unfairness in machine learning. We then propose a regularization approach that is applicable to any prediction algorithm with probabilistic discriminative models. We further apply this approach to logistic regression and empirically show its effectiveness and efficiency.",
+    "metrics": ["demographic-parity"],
+    "conference": "European Conference on Machine Learning and Principles and Practice of Knowledge Discovery in Databases (ECML PKDD)",
+    "year": 2012,
+    "paper_url": "https://rd.springer.com/chapter/10.1007/978-3-642-33486-3_3",
+    "code_url": "https://www.kamishima.net/faclass/"
+  },
+  {
+    "title": "Data Preprocessing Techniques for Classification without Discrimination",
+    "authors": "F. Kamiran and T. Calders",
+    "abstract": "Recently, the following Discrimination-Aware Classification Problem was introduced: Suppose we are given training data that exhibit unlawful discrimination; e.g., toward sensitive attributes such as gender or ethnicity. The task is to learn a classifier that optimizes accuracy, but does not have this discrimination in its predictions on test data. This problem is relevant in many settings, such as when the data are generated by a biased decision process or when the sensitive attribute serves as a proxy for unobserved features. In this paper, we concentrate on the case with only one binary sensitive attribute and a two-class classification problem. We first study the theoretically optimal trade-off between accuracy and non-discrimination for pure classifiers. Then, we look at algorithmic solutions that preprocess the data to remove discrimination before a classifier is learned. We survey and extend our existing data preprocessing techniques, being suppression of the sensitive attribute, massaging the dataset by changing class labels, and reweighing or resampling the data to remove discrimination without relabeling instances. These preprocessing techniques have been implemented in a modified version of Weka and we present the results of experiments on real-life data.",
+    "metrics": ["demographic-parity"],
+    "conference": "Knowledge and Information Systems (KAIS)",
+    "year": 2012,
+    "paper_url": "https://link.springer.com/article/10.1007%2Fs10115-011-0463-8",
+    "code_url": "https://aif360.readthedocs.io/en/v0.2.3/_modules/aif360/algorithms/preprocessing/reweighing.html#Reweighing"
+  },
+  {
+    "title": "Certifying and Removing Disparate Impact",
+    "authors": "M. Feldman, S. A. Friedler, J. Moeller, C. Scheidegger and S. Venkatasubramanian",
+    "abstract": "What does it mean for an algorithm to be biased? In U.S. law, unintentional bias is encoded via disparate impact, which occurs when a selection process has widely different outcomes for different groups, even as it appears to be neutral. This legal determination hinges on a definition of a protected class (ethnicity, gender) and an explicit description of the process. When computers are involved, determining disparate impact (and hence bias) is harder. It might not be possible to disclose the process. In addition, even if the process is open, it might be hard to elucidate in a legal setting how the algorithm makes its decisions. Instead of requiring access to the process, we propose making inferences based on the data it uses. We present four contributions. First, we link disparate impact to a measure of classification accuracy that while known, has received relatively little attention. Second, we propose a test for disparate impact based on how well the protected class can be predicted from the other attributes. Third, we describe methods by which data might be made unbiased. Finally, we present empirical evidence supporting the effectiveness of our test for disparate impact and our approach for both masking bias and preserving relevant information in the data. Interestingly, our approach resembles some actual selection practices that have recently received legal scrutiny.",
+    "metrics": ["demographic-parity"],
+    "conference": "ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD)",
+    "year": 2015,
+    "paper_url": "https://arxiv.org/abs/1412.3756",
+    "code_url": "https://aif360.readthedocs.io/en/v0.2.3/_modules/aif360/algorithms/preprocessing/disparate_impact_remover.html#DisparateImpactRemover"
+  },
+  {
+    "title": "Classification with Fairness Constraints: A Meta-Algorithm with Provable Guarantees",
+    "authors": "E. Celis, L. Huang, V. Keswani and N. Vishnoi",
+    "abstract": "Developing classification algorithms that are fair with respect to sensitive attributes of the data has become an important problem due to the growing deployment of classification algorithms in various social contexts. Several recent works have focused on fairness with respect to a specific metric, modeled the corresponding fair classification problem as a constrained optimization problem, and developed tailored algorithms to solve them. Despite this, there still remain important metrics for which we do not have fair classifiers and many of the aforementioned algorithms do not come with theoretical guarantees; perhaps because the resulting optimization problem is non-convex. The main contribution of this paper is a new meta-algorithm for classification that takes as input a large class of fairness constraints, with respect to multiple non-disjoint sensitive attributes, and which comes with provable guarantees. This is achieved by first developing a meta-algorithm for a large family of classification problems with convex constraints, and then showing that classification problems with general types of fairness constraints can be reduced to those in this family. We present empirical results that show that our algorithm can achieve near-perfect fairness with respect to various fairness metrics, and that the loss in accuracy due to the imposed fairness constraints is often small. Overall, this work unifies several prior works on fair classification, presents a practical algorithm with theoretical guarantees, and can handle fairness metrics that were previously not possible.",
+    "metrics": ["demographic-parity", "equalized-odds", "equalized-opportunities", "conditional-statistical-parity"],
+    "conference": "ACM Conference on Fairness, Accountability, and Transparency (FAT)",
+    "year": 2019,
+    "paper_url": "https://arxiv.org/abs/1806.06055",
+    "code_url": "https://github.com/vijaykeswani/FairClassification"
+  },
+  {
+    "title": "Learning Non-Discriminatory Predictors",
+    "authors": "B. Woodworth, S. Gunasekar, M. I. Ohannessian and N. Srebro",
+    "abstract": "We consider learning a predictor which is non-discriminatory with respect to a \"protected attribute\" according to the notion of \"equalized odds\" proposed by Hardt et al. [2016]. We study the problem of learning such a non-discriminatory predictor from a finite training set, both statistically and computationally. We show that a post-hoc correction approach, as suggested by Hardt et al, can be highly suboptimal, present a nearly-optimal statistical procedure, argue that the associated computational problem is intractable, and suggest a second moment relaxation of the non-discrimination definition for which learning is tractable.",
+    "metrics": ["equalized-odds", "equalized-opportunities"],
+    "conference": "Conference on Learning Theory (COLT)",
+    "year": 2017,
+    "paper_url": "https://proceedings.mlr.press/v65/woodworth17a.html",
+    "code_url": ""
+  },
+  {
+    "title": "Fairness Constraints: Mechanisms for Fair Classification",
+    "authors": "M. B. Zafar, I. Valera, M. G. Rodriguez and K. P. Gummadi",
+    "abstract": "Algorithmic decision making systems are ubiquitous across a wide variety of online as well as offline services. These systems rely on complex learning methods and vast amounts of data to optimize the service functionality, satisfaction of the end user and profitability. However, there is a growing concern that these automated decisions can lead, even in the absence of intent, to a lack of fairness, i.e., their outcomes can disproportionately hurt (or, benefit) particular groups of people sharing one or more sensitive attributes (e.g., race, sex). In this paper, we introduce a flexible mechanism to design fair classifiers by leveraging a novel intuitive measure of decision boundary (un)fairness. We instantiate this mechanism with two well-known classifiers, logistic regression and support vector machines, and show on real-world data that our mechanism allows for a fine-grained control on the degree of fairness, often at a small cost in terms of accuracy.",
+    "metrics": ["demographic-parity", "conditional-statistical-parity"],
+    "conference": "International Conference on Artificial Intelligence and Statistics (AISTATS)",
+    "year": 2017,
+    "paper_url": "https://arxiv.org/abs/1507.05259",
+    "code_url": "https://github.com/mbilalzafar/fair-classification"
+  },
+  {
+    "title": "Learning Classification without Disparate Mistreatment",
+    "authors": "M. B. Zafar, I. Valera, M. G. Rodriguez and K. P. Gummadi",
+    "abstract": "Automated data-driven decision making systems are increasingly being used to assist, or even replace humans in many settings. These systems function by learning from historical decisions, often taken by humans. In order to maximize the utility of these systems (or, classifiers), their training involves minimizing the errors (or, misclassifications) over the given historical data. However, it is quite possible that the optimally trained classifier makes decisions for people belonging to different social groups with different misclassification rates (e.g., misclassification rates for females are higher than for males), thereby placing these groups at an unfair disadvantage. To account for and avoid such unfairness, in this paper, we introduce a new notion of unfairness, disparate mistreatment, which is defined in terms of misclassification rates. We then propose intuitive measures of disparate mistreatment for decision boundary-based classifiers, which can be easily incorporated into their formulation as convex-concave constraints. Experiments on synthetic as well as real world datasets show that our methodology is effective at avoiding disparate mistreatment, often at a small cost in terms of accuracy.",
+    "metrics": ["equalized-odds", "equalized-opportunities"],
+    "conference": "International World Wide Web Conference (WWW)",
+    "year": 2017,
+    "paper_url": "https://arxiv.org/abs/1610.08452",
+    "code_url": "https://github.com/mbilalzafar/fair-classification"
+  },
+  {
+    "title": "The Cost of Fairness in Binary Classification",
+    "authors": "A. K. Menon and R. C. Williamson",
+    "abstract": "Binary classifiers are often required to possess fairness in the sense of not overly discriminating with respect to a feature deemed sensitive e.g. race. We study the inherent tradeoffs in learning classifiers with a fairness constraint in the form of two questions: what is the best accuracy we can expect for a given level of fairness?, and what is the nature of these optimal fairness-aware classifiers? To answer these questions, we provide three main contributions. First, we relate two existing fairness measures to cost-sensitive risks. Second, we show that for such cost-sensitive fairness measures, the optimal classifier is an instance-dependent thresholding of the class-probability function. Third, we relate the tradeoff between accuracy and fairness to the alignment between the target and sensitive features’ class-probabilities. A practical implication of our analysis is a simple approach to the fairness-aware problem which involves suitably thresholding class-probability estimates.",
+    "metrics": ["demographic-parity", "conditional-statistical-parity", "equalized-odds", "equalized-opportunities"],
+    "conference": "Conference on Fairness, Accountability and Transparency (FAT)",
+    "year": 2018,
+    "paper_url": "https://proceedings.mlr.press/v81/menon18a.html",
+    "code_url": ""
+  },
+  {
+    "title": "Non-Discriminatory Machine Learning through Convex Fairness Criteria",
+    "authors": "N. Goel, M. Yaghini and B. Faltings",
+    "abstract": "We introduce a novel technique to achieve non-discrimination in machine learning without sacrificing convexity and probabilistic interpretation. We also propose a new notion of fairness for machine learning called the weighted proportional fairness and show that our technique satisfies this subjective fairness criterion.",
+    "metrics": ["demographic-parity", "conditional-statistical-parity"],
+    "conference": "AAAI Conference on Artificial Intelligence (AAAI)",
+    "year": 2018,
+    "paper_url": "https://ojs.aaai.org/index.php/AAAI/article/view/11662",
+    "code_url": ""
+  },
+  {
+    "title": "Adaptive Sensitive Reweighting to Mitigate Bias in Fairness-aware Classification",
+    "authors": "E. Krasanakis, E. Spyromitros-Xioufis, S. Papadopoulos, Y. Kompatsiaris",
+    "abstract": "We introduce a novel technique to achieve non-discrimination in machine learning without sacrificing convexity and probabilistic interpretation. We also propose a new notion of fairness for machine learning called the weighted proportional fairness and show that our technique satisfies this subjective fairness criterion.",
+    "metrics": ["demographic-parity","equalized-odds"],
+    "conference": "International World Wide Web Conference (WWW)",
+    "year": 2018,
+    "paper_url": "https://dl.acm.org/doi/10.1145/3178876.3186133",
+    "code_url": "https://github.com/MKLab-ITI/adaptive-fairness"
+  },
+  {
+    "title": "Adaptive Sensitive Reweighting to Mitigate Bias in Fairness-aware Classification",
+    "authors": "V. Grari, O. E. Hajouji, S. Lamprier and M. Detyniecki",
+    "abstract": "In recent years, significant work has been done to include fairness constraints in the training objective of machine learning algorithms. Many state-of the-art algorithms tackle this challenge by learning a fair representation which captures all the relevant information to predict the output Y while not containing any information about a sensitive attribute S. In this paper, we propose an adversarial algorithm to learn unbiased representations via the Hirschfeld-Gebelein-Renyi (HGR) maximal correlation coefficient. We leverage recent work which has been done to estimate this coefficient by learning deep neural network transformations and use it as a minmax game to penalize the intrinsic bias in a multi dimensional latent representation. Compared to other dependence measures, the HGR coefficient captures more information about the non-linear dependencies with the sensitive variable, making the algorithm more efficient in mitigating bias in the representation. We empirically evaluate and compare our approach and demonstrate significant improvements over existing works in the field.",
+    "metrics": ["demographic-parity"],
+    "conference": "European Conference on Machine Learning and Principles and Practice of Knowledge Discovery in Databases (ECML PKDD)",
+    "year": 2021,
+    "paper_url": "https://arxiv.org/abs/2009.03183",
+    "code_url": "https://github.com/fairness-adversarial/unbiased_representations_renyi"
+  }
+];
+</script>
+
+<style type="text/css">
+  span.filter-button:hover {
+    cursor: pointer;
+  }
+
+  /* styling show more buttons */
+  .show-more-btn {
+    margin: auto;
+    cursor: pointer;
+    color: #0095e5;
+    white-space: nowrap;
+    transition: color 300ms ease-in-out;
+    border: 0;
+    font-size: 0.8em;
+    background: transparent;
+  }
+  .show-more-btn:hover {
+    color: red;
+  }
+
+</style>
+
+<script>
+
+  $(document).ready(function() {
+
+    // Render JsRender partials
+    var template = $.templates("#jsrender-template");
+
+    data.sort(function(a, b) { return (a["title"] > b["title"]) ? 1 : ((a["title"] < b["title"]) ? -1 : 0)});
+
+    var htmlOutput = template.render(data);
+    $("#jsrender-content").html(htmlOutput);
+    
+    // EasyGrid configuration
+    var listing = new EasyGrid({
+        selector: "#grid_filter",
+        dimensions: {
+            width: "400",
+            height: "auto",
+            margin: "10"
+        },
+        style: {
+            borderRadius: "5"
+        },
+        config: {
+            fetchFromHTML: true,
+            filter: true
+        },
+        animations: {
+            fadeInSpeed: "100",
+            addItemSpeed: "100"
+        }
+    });
+
+    // ShowMore configuration
+    new ShowMore('.card-text', {
+      config: {
+        type: "text",
+        limit: 240,
+        more: "→ more",
+        less: "← less"
+      }
+    });
+
+    // Deep link implementation
+    url = window.location.href;
+
+    if (url.search('#') != -1) {
+        var elements = url.split('#');
+        var scope = elements[elements.length - 1]
+        listing.Filter(scope);
+
+        // set active button
+        $("button.btn").removeClass("active");
+        $("button.filter-button[data-filter='" + scope + "']").addClass("active");
+    }
+
+    // Filter action
+    $(document).on('click', 'button.filter-button, span.filter-button', function() {
+            
+        var scope = $(this).data("filter");
+        listing.Filter(scope);
+
+        // Update browser address bar
+        var newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '#' + scope;
+        window.history.pushState({path: newurl}, '', newurl);
+
+        // Set active button
+        $("button.btn").removeClass("active");
+        $("button.filter-button[data-filter='" + scope + "']").addClass("active");
+
+        new ShowMore('.card-text', {
+          config: {
+            type: "text",
+            limit: 240,
+            more: "→ more",
+            less: "← less"
+          }
+        });
+
+
+    });
+  });
+  
+</script>
+
+<body>
+
+  <!-- JsRender template (Bootstrap card) -->
+  <script id="jsrender-template" type="text/x-jsrender">
+    <div class="easygrid_fetch {{for metrics}}{{:#data}} {{/for}}">
+      <div class="card"> 
+        <div class="card-body">
+          <div class="row">
+            <div class="col">
+              <h5 class="card-title fs-4">{{:title}}</h5>
+            </div>
+            <div class="col-xs-auto text-end" style="width: 100px;">
+              {{if paper_url}}
+                <a href="{{:paper_url}}" target="_blank" title="Paper"><img src="images/file-earmark-text.svg" width="32" height="32" alt="Paper"></a>
+              {{/if}}
+              {{if code_url}}
+                <a href="{{:code_url}}" target="_blank" title="Code"><img src="images/file-earmark-code.svg" width="32" height="32" alt="Code"></a>
+              {{/if}}
+            </div>  
+          </div>
+          <div class="d-grid d-sm-flex mb-2 gap-1">
+            <em>{{:authors}}</em>
+          </div>
+          <div class="card-text mb-3" aria-expanded="false">{{:abstract}}</div>
+          <div class="text-muted mb-2">
+              {{:conference}} {{:year}}
+          </div>
+          <div class="gap-1">
+            {{for metrics}}
+              <span class="badge rounded-pill bg-secondary filter-button" data-filter="{{:#data}}">{{:#data}}</span>
+            {{/for}}
+          </div>
+        </div>
+      </div>
+    </div>
+  </script>
+
+  <div class="container col-xxl-8 px-4 py-5" style="min-height: 100vh;">
+   <div class="row flex-lg-row-reverse align-items-center g-5 py-5">
+    <div class="col-10 col-sm-8 col-lg-6">
+      <img src="images/logo.png" class="d-block mx-lg-auto img-fluid" width="700" height="500" loading="lazy">
+    </div>
+    <div class="col-lg-6">
+      <h1 class="display-5 fw-bold lh-1 mb-3">Fairness Library</h1>
+      <p class="lead">This collection of algorithms for bias mitigation supports the implementation of AI Fairness in practice. Use the <a href="https://github.com/axa-rev-research/fairness-compass" target="_blank">Fairness Compass</a> to identify the optimal fairness metric for your project. </p>
+
+    </div>
+  </div>
+
+  <!-- Filter menu -->
+  <div class="row">
+    <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+      <button type="button" class="btn btn-outline-primary active" onclick="window.location.href=window.location.pathname">All</button>
+      <button type="button" class="btn btn-outline-primary filter-button" data-filter="demographic-parity">Demographic parity</button>
+      <button type="button" class="btn btn-outline-primary filter-button" data-filter="conditional-statistical-parity">Conditional statistical parity</button>
+      <button type="button" class="btn btn-outline-primary filter-button" data-filter="equalized-odds">Equalized odds</button>
+      <button type="button" class="btn btn-outline-primary filter-button" data-filter="equalized-opportunities">Equalized oportunities</button>
+    </div>
+  </div>
+
+  <!--  Main Div -->
+  <div class="row">
+
+    <!--  EasyGrid placeholder -->
+    <div id="grid_filter" class="mt-5 easygrid_bvgrid" style="width:100%; margin-top:5px;"> 
+      
+      <!--  Dynamic content inserted with JsRender -->
+      <div id="jsrender-content"></div>
+   
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+
+</footer>
+<footer class="page-footer pt-4">
+  <div class="footer-copyright text-center py-3 fs-6">Made with <img src="images/heart-fill.svg"width="16" height="16"> 
+   in Paris.
+   
+   </div>
+</footer>
+
+</body>
+</html>
