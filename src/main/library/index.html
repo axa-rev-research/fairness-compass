@@ -275,6 +275,15 @@ var data = [
         // set active button
         $("button.btn").removeClass("active");
         $("button.filter-button[data-filter='" + scope + "']").addClass("active");
+
+        new ShowMore('.card-text', {
+          config: {
+            type: "text",
+            limit: 240,
+            more: "→ more",
+            less: "← less"
+          }
+        });
     }
 
     // Filter action
@@ -299,6 +308,7 @@ var data = [
             less: "← less"
           }
         });
+
 
 
     });
